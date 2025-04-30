@@ -1,0 +1,26 @@
+<!-- navbar.html -->
+<nav class="navbar navbar-custom navbar-expand-lg py-2">
+    <div class="container-fluid align-items-center">
+      <span class="profile-area ms-2 d-none d-lg-flex">
+        <img src="https://placehold.co/40x40" class="profile-pic" alt="Profile"/>
+        <span>Jane</span>
+      </span>
+      <a class="navbar-brand mx-auto ms-lg-5 fw-bold" style="font-size:2em;letter-spacing:2px;" href="index.html">ShopName</a>
+      <form class="d-flex mx-auto px-2" style="width:230px;" role="search">
+        <input class="form-control rounded-pill" type="search" placeholder="Search" aria-label="Search" id="searchInput">
+      </form>
+      <div class="d-flex align-items-center gap-2 ms-auto">
+        <div class="form-check form-switch mb-0">
+          <input class="form-check-input" type="checkbox" id="darkModeToggle" autocomplete="off">
+          <label class="form-check-label" for="darkModeToggle" title="Toggle dark mode">&#9788;</label>
+        </div>
+        <a href="cart.html" class="cart-icon position-relative" id="cartNavBtn">
+          <!-- Use the emoji directly instead of Bootstrap Icons -->
+          <span style="font-size:1.5em">&#128722;</span>
+          <span class="cart-badge position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success" id="cartBadge" style="font-size:0.75em;display:none"></span>
+        </a>
+        <a href="#" class="btn btn-link">Orders</a>
+        <a href="#" class="btn btn-link">Sign in</a>
+      </div>
+    </div>
+  </nav>
