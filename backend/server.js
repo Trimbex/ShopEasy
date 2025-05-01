@@ -1,7 +1,14 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
-import supabase from "./supabase.js";
+import authRoutes from "./routes/authRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
+import path from "path";
+import { fileURLToPath } from "url";
+
+// Get directory name in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load environment variables
 dotenv.config();
@@ -14,29 +21,14 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
-app.get("/api/users", async (req, res) => {
-  try {
-    const { data, error } = await supabase.from("users").select("*");
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
 
-    if (error) throw error;
-
-    console.log("Fetched users:", data);
-
-    res.status(200).json({
-      success: true,
-      users: data,
-    });
-  } catch (error) {
-    console.error("Error fetching users:", error.message);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
-});
+// Serve static files from the frontend directory
+app.use(express.static(path.join(__dirname, "../frontend")));
 
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`Test the users endpoint at: http://localhost:${PORT}/api/users`);
+  console.log(`Access the application at: http://localhost:${PORT}`);
 });
