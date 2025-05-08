@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 // Import routes
 import authRoutes from './routes/authRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import productRoutes from './routes/productRoutes.js';
 
 // Configure environment variables
 dotenv.config();
@@ -31,6 +32,7 @@ app.get('/api', (req, res) => {
 // Register routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/products', productRoutes);
 
 // Start the server
 app.listen(PORT, () => {

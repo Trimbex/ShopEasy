@@ -5,12 +5,10 @@ import { useState } from 'react';
 const ProductFilter = ({ 
   categories, 
   priceRange, 
-  onCategoryChange, 
-  onPriceChange, 
-  onSort,
-  selectedCategories = [],
-  selectedPriceRange = [0, 1000], 
-  sortOption = 'featured'
+  selectedCategories = [], 
+  selectedPriceRange = [0, 1000],
+  onCategoryChange,
+  onPriceRangeChange
 }) => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
@@ -34,22 +32,6 @@ const ProductFilter = ({
       </div>
 
       <div className={`${isFilterOpen ? 'block' : 'hidden'} lg:block p-4`}>
-        {/* Sort Options */}
-        <div className="mb-6">
-          <h3 className="text-sm font-medium text-gray-900 mb-2">Sort By</h3>
-          <select 
-            className="w-full rounded-md border border-gray-300 py-2 px-3"
-            value={sortOption}
-            onChange={(e) => onSort(e.target.value)}
-          >
-            <option value="featured">Featured</option>
-            <option value="price_low_high">Price: Low to High</option>
-            <option value="price_high_low">Price: High to Low</option>
-            <option value="newest">Newest</option>
-            <option value="rating">Top Rated</option>
-          </select>
-        </div>
-
         {/* Categories */}
         <div className="mb-6">
           <h3 className="text-sm font-medium text-gray-900 mb-2">Categories</h3>
@@ -61,7 +43,13 @@ const ProductFilter = ({
                   name={`category-${category}`}
                   type="checkbox"
                   checked={selectedCategories.includes(category)}
-                  onChange={() => onCategoryChange(category)}
+                  onChange={() => {
+                    if (selectedCategories.includes(category)) {
+                      onCategoryChange(selectedCategories.filter(c => c !== category));
+                    } else {
+                      onCategoryChange([...selectedCategories, category]);
+                    }
+                  }}
                   className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
                 />
                 <label htmlFor={`category-${category}`} className="ml-2 text-sm text-gray-700">
@@ -86,7 +74,7 @@ const ProductFilter = ({
                 min={priceRange[0]}
                 max={priceRange[1]}
                 value={selectedPriceRange[0]}
-                onChange={(e) => onPriceChange([parseInt(e.target.value), selectedPriceRange[1]])}
+                onChange={(e) => onPriceRangeChange([parseInt(e.target.value), selectedPriceRange[1]])}
                 className="w-full"
               />
               <input
@@ -94,7 +82,7 @@ const ProductFilter = ({
                 min={priceRange[0]}
                 max={priceRange[1]}
                 value={selectedPriceRange[1]}
-                onChange={(e) => onPriceChange([selectedPriceRange[0], parseInt(e.target.value)])}
+                onChange={(e) => onPriceRangeChange([selectedPriceRange[0], parseInt(e.target.value)])}
                 className="w-full"
               />
             </div>
@@ -105,8 +93,7 @@ const ProductFilter = ({
         <button
           onClick={() => {
             onCategoryChange([]);
-            onPriceChange([priceRange[0], priceRange[1]]);
-            onSort('featured');
+            onPriceRangeChange([priceRange[0], priceRange[1]]);
           }}
           className="w-full bg-gray-100 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-200 text-sm font-medium"
         >

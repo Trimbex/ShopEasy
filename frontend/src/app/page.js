@@ -3,53 +3,28 @@
 import Link from 'next/link';
 import ProductGrid from '../components/product/ProductGrid';
 import { useState, useEffect } from 'react';
+import { productsApi } from '../services/api';
 
 export default function Home() {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Simulate fetching products from API
-    setTimeout(() => {
-      // This would normally be fetched from a backend API
-      const mockProducts = [
-        {
-          id: '1',
-          name: 'Premium Wireless Headphones',
-          description: 'Experience crystal-clear audio with our premium wireless headphones.',
-          price: 129.99,
-          imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1170&q=80',
-          category: 'Electronics'
-        },
-        {
-          id: '2',
-          name: 'Classic Denim Jacket',
-          description: 'A timeless denim jacket that never goes out of style.',
-          price: 79.99,
-          imageUrl: 'https://images.unsplash.com/photo-1521223890158-f9f7c3d5d504?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1160&q=80',
-          category: 'Clothing'
-        },
-        {
-          id: '3',
-          name: 'Smart Watch',
-          description: 'Track your fitness goals and stay connected with our smart watch.',
-          price: 199.99,
-          imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1099&q=80',
-          category: 'Electronics'
-        },
-        {
-          id: '4',
-          name: 'Bestselling Novel',
-          description: 'The latest bestseller that everyone is talking about.',
-          price: 24.99,
-          imageUrl: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1198&q=80',
-          category: 'Books'
-        }
-      ];
-      
-      setFeaturedProducts(mockProducts);
-      setLoading(false);
-    }, 500);
+    const fetchProducts = async () => {
+      try {
+        const products = await productsApi.getAll();
+        setFeaturedProducts(products);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching products:', err);
+        setError('Failed to load products. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
   }, []);
 
   return (
@@ -92,6 +67,10 @@ export default function Home() {
           {loading ? (
             <div className="flex justify-center">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-700"></div>
+            </div>
+          ) : error ? (
+            <div className="text-center text-red-600">
+              <p>{error}</p>
             </div>
           ) : (
             <ProductGrid products={featuredProducts} />

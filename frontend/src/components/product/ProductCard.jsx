@@ -1,9 +1,38 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
+import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
+import SignInModal from '../auth/SignInModal';
 
 const ProductCard = ({ product }) => {
   const { id, name, price, description, imageUrl, stock } = product;
+  const { addItem } = useCart();
+  const { isAuthenticated } = useAuth();
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [showSignInModal, setShowSignInModal] = useState(false);
+  const [quantity, setQuantity] = useState(1);
+
+  const handleAddToCart = async () => {
+    if (!isAuthenticated) {
+      setShowSignInModal(true);
+      return;
+    }
+    if (stock <= 0) return;
+    
+    try {
+      setIsAddingToCart(true);
+      addItem(product, quantity);
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+    } finally {
+      setIsAddingToCart(false);
+    }
+  };
+
+  // Ensure price is a number and format it
+  const formattedPrice = typeof price === 'number' ? price.toFixed(2) : Number(price).toFixed(2);
 
   return (
     <div className="bg-white shadow-md rounded-lg overflow-hidden border border-gray-200 transition-transform duration-200 hover:shadow-lg hover:scale-105">
@@ -33,23 +62,38 @@ const ProductCard = ({ product }) => {
         </Link>
         <p className="text-gray-600 text-sm mb-2 line-clamp-2">{description}</p>
         <div className="flex justify-between items-center">
-          <span className="text-xl font-bold text-gray-900">${price.toFixed(2)}</span>
-          <button 
-            className={`px-3 py-1 text-sm font-medium rounded-md ${
-              stock > 0 
-                ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
-                : 'bg-gray-300 text-gray-600 cursor-not-allowed'
-            }`}
-            disabled={stock <= 0}
-            onClick={() => {
-              // Comment: Add to cart functionality would go here
-              console.log(`Add product ${id} to cart`);
-            }}
-          >
-            Add to Cart
-          </button>
+          <span className="text-xl font-bold text-gray-900">${formattedPrice}</span>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setQuantity(Math.max(1, quantity - 1))}
+              className="text-gray-600 hover:text-gray-900"
+            >
+              -
+            </button>
+            <span className="text-gray-900">{quantity}</span>
+            <button
+              onClick={() => setQuantity(quantity + 1)}
+              className="text-gray-600 hover:text-gray-900"
+            >
+              +
+            </button>
+          </div>
         </div>
+        <button
+          onClick={handleAddToCart}
+          className={`w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200 cursor-pointer active:bg-indigo-800 ${
+            stock <= 0 || isAddingToCart ? 'cursor-not-allowed' : ''
+          }`}
+          disabled={stock <= 0 || isAddingToCart}
+        >
+          {isAddingToCart ? 'Adding...' : 'Add to Cart'}
+        </button>
       </div>
+
+      <SignInModal 
+        isOpen={showSignInModal} 
+        onClose={() => setShowSignInModal(false)} 
+      />
     </div>
   );
 };

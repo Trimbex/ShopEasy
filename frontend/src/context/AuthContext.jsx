@@ -40,6 +40,7 @@ export const AuthProvider = ({ children }) => {
         } else {
           // If token is invalid, clear it
           localStorage.removeItem('token');
+          localStorage.removeItem('cart'); // Clear cart when token is invalid
         }
       } catch (err) {
         console.error('Auth check error:', err);
@@ -115,9 +116,13 @@ export const AuthProvider = ({ children }) => {
 
   // Logout
   const logout = () => {
+    // Clear all auth-related data
     localStorage.removeItem('token');
+    localStorage.removeItem('cart');
     setUser(null);
-    router.push('/');
+    
+    // Force reload the page to clear all state
+    window.location.href = '/';
   };
 
   // Check if user is admin
