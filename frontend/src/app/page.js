@@ -1,103 +1,198 @@
-import Image from "next/image";
+'use client';
+
+import Link from 'next/link';
+import ProductGrid from '../components/product/ProductGrid';
+import { useState, useEffect } from 'react';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    // Simulate fetching products from API
+    setTimeout(() => {
+      // This would normally be fetched from a backend API
+      const mockProducts = [
+        {
+          id: '1',
+          name: 'Premium Wireless Headphones',
+          description: 'Experience crystal-clear audio with our premium wireless headphones.',
+          price: 129.99,
+          imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1170&q=80',
+          category: 'Electronics'
+        },
+        {
+          id: '2',
+          name: 'Classic Denim Jacket',
+          description: 'A timeless denim jacket that never goes out of style.',
+          price: 79.99,
+          imageUrl: 'https://images.unsplash.com/photo-1521223890158-f9f7c3d5d504?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1160&q=80',
+          category: 'Clothing'
+        },
+        {
+          id: '3',
+          name: 'Smart Watch',
+          description: 'Track your fitness goals and stay connected with our smart watch.',
+          price: 199.99,
+          imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1099&q=80',
+          category: 'Electronics'
+        },
+        {
+          id: '4',
+          name: 'Bestselling Novel',
+          description: 'The latest bestseller that everyone is talking about.',
+          price: 24.99,
+          imageUrl: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1198&q=80',
+          category: 'Books'
+        }
+      ];
+      
+      setFeaturedProducts(mockProducts);
+      setLoading(false);
+    }, 500);
+  }, []);
+
+  return (
+    <div className="bg-gray-50">
+      {/* Hero Section with higher contrast */}
+      <div className="relative bg-gradient-to-r from-indigo-800 to-indigo-600">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32">
+          <div className="sm:text-center lg:text-left">
+            <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl md:text-6xl">
+              <span className="block">Shop the Best</span>
+              <span className="block">Products Online</span>
+            </h1>
+            <p className="mt-3 text-base text-white sm:mt-5 sm:text-lg sm:max-w-xl sm:mx-auto lg:mx-0">
+              Find everything you need with our wide selection of high-quality products at great prices.
+            </p>
+            <div className="mt-8 sm:mt-12">
+              <Link href="/products" className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-indigo-700 bg-white hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white">
+                Shop Now
+              </Link>
+              <Link href="/categories" className="ml-4 inline-flex items-center px-6 py-3 border border-white text-base font-medium rounded-md text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white">
+                View Categories
+              </Link>
+            </div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
+
+      {/* Featured Products Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <div className="text-center">
+          <h2 className="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
+            Featured Products
+          </h2>
+          <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-700">
+            Discover our most popular items
+          </p>
+        </div>
+
+        <div className="mt-12">
+          {loading ? (
+            <div className="flex justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-700"></div>
+            </div>
+          ) : (
+            <ProductGrid products={featuredProducts} />
+          )}
+          <div className="mt-8 text-center">
+            <Link href="/products" className="inline-flex items-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-700 hover:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600">
+              View All Products
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Categories Preview */}
+      <div className="bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+          <div className="text-center">
+            <h2 className="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
+              Shop by Category
+            </h2>
+            <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-700">
+              Browse our collections
+            </p>
+          </div>
+
+          <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="group relative">
+              <div className="relative h-80 w-full overflow-hidden rounded-lg bg-white group-hover:opacity-75 sm:h-64">
+                <img
+                  src="https://images.unsplash.com/photo-1498049794561-7780e7231661?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1170&q=80"
+                  alt="Electronics Category"
+                  className="h-full w-full object-cover object-center"
+                />
+              </div>
+              <h3 className="mt-4 text-lg font-medium text-gray-900">
+                <Link href="/products?category=electronics">
+                  <span className="absolute inset-0" />
+                  Electronics
+                </Link>
+              </h3>
+              <p className="mt-1 text-sm text-gray-700">Shop the latest gadgets and devices</p>
+            </div>
+
+            <div className="group relative">
+              <div className="relative h-80 w-full overflow-hidden rounded-lg bg-white group-hover:opacity-75 sm:h-64">
+                <img
+                  src="https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1170&q=80"
+                  alt="Clothing Category"
+                  className="h-full w-full object-cover object-center"
+                />
+              </div>
+              <h3 className="mt-4 text-lg font-medium text-gray-900">
+                <Link href="/products?category=clothing">
+                  <span className="absolute inset-0" />
+                  Clothing
+                </Link>
+              </h3>
+              <p className="mt-1 text-sm text-gray-700">Stylish clothes for all occasions</p>
+            </div>
+
+            <div className="group relative">
+              <div className="relative h-80 w-full overflow-hidden rounded-lg bg-white group-hover:opacity-75 sm:h-64">
+                <img
+                  src="https://images.unsplash.com/photo-1544947950-fa07a98d237f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1074&q=80"
+                  alt="Books Category"
+                  className="h-full w-full object-cover object-center"
+                />
+              </div>
+              <h3 className="mt-4 text-lg font-medium text-gray-900">
+                <Link href="/products?category=books">
+                  <span className="absolute inset-0" />
+                  Books
+                </Link>
+              </h3>
+              <p className="mt-1 text-sm text-gray-700">Bestsellers, classics, and more</p>
+            </div>
+          </div>
+
+          <div className="mt-8 text-center">
+            <Link href="/categories" className="inline-flex items-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-700 hover:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600">
+              View All Categories
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Special Offers */}
+      <div className="bg-gradient-to-r from-indigo-700 to-purple-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 text-center">
+          <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+            Special Offers
+          </h2>
+          <p className="mt-4 max-w-2xl mx-auto text-xl text-white">
+            Limited-time deals you don't want to miss!
+          </p>
+          <div className="mt-8">
+            <Link href="/products?discount=true" className="inline-flex items-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-indigo-700 bg-white hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white">
+              Shop Deals
+            </Link>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

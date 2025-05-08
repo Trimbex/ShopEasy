@@ -15,33 +15,36 @@ datasource db {
   directUrl = env("DIRECT_URL")
 
 }
-
-// User model (Extends Supabase Auth)
+// User model with authentication
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
+  password  String   // For storing hashed password with bcrypt
   name      String?
+  isAdmin   Boolean  @default(false) @map("is_admin")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   orders    Order[]
   cart      Cart?
+  reviews   Review[]
 
   @@map("users")
 }
 
 // Product model
 model Product {
-  id          String   @id @default(uuid())
+  id          String      @id @default(uuid())
   name        String
   description String?
-  price       Decimal  @db.Decimal(10, 2)
-  imageUrl    String?  @map("image_url")
-  stock       Int      @default(0)
+  price       Decimal     @db.Decimal(10, 2)
+  imageUrl    String?     @map("image_url")
+  stock       Int         @default(0)
   category    String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt   DateTime    @default(now()) @map("created_at")  
+  updatedAt   DateTime    @updatedAt @map("updated_at")
   cartItems   CartItem[]
   orderItems  OrderItem[]
+  reviews     Review[]
 
   @@map("products")
 }
@@ -66,8 +69,6 @@ model CartItem {
   productId String   @map("product_id")
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   quantity  Int      @default(1)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@unique([cartId, productId])
   @@map("cart_items")
@@ -84,7 +85,6 @@ model Order {
   shippingInfo Json?       @map("shipping_info")
   paymentInfo  Json?       @map("payment_info")
   createdAt    DateTime    @default(now()) @map("created_at")
-  updatedAt    DateTime    @updatedAt @map("updated_at")
 
   @@map("orders")
 }
@@ -98,10 +98,22 @@ model OrderItem {
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   quantity  Int
   price     Decimal  @db.Decimal(10, 2)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("order_items")
+}
+
+// Customer Reviews and Ratings
+model Review {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String   @map("product_id")
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  rating    Int      // 1-5 star rating
+  comment   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("reviews")
 }
 
 // Order Status Enum

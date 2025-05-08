@@ -4,6 +4,10 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+// Import routes
+import authRoutes from './routes/authRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+
 // Configure environment variables
 dotenv.config();
 
@@ -23,6 +27,10 @@ app.use(express.json());
 app.get('/api', (req, res) => {
   res.json({ message: 'Welcome to the API!' });
 });
+
+// Register routes
+app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Start the server
 app.listen(PORT, () => {
