@@ -20,12 +20,18 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// Serve static files from the frontend directory
+app.use(express.static(path.join(__dirname, "../frontend")));
+
+// Import route protection middleware
+import protectRoutes from "./middleware/routeProtection.js";
+
+// Apply route protection to all routes except public ones
+app.use(protectRoutes);
+
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
-
-// Serve static files from the frontend directory
-app.use(express.static(path.join(__dirname, "../frontend")));
 
 // Start server
 app.listen(PORT, () => {
