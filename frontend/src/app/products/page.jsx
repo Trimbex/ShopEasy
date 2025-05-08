@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import ProductGrid from '../../components/product/ProductGrid';
 import ProductFilter from '../../components/product/ProductFilter';
@@ -19,24 +19,32 @@ const fetcher = async (url) => {
 };
 
 const ProductsPage = () => {
-  const [selectedCategories, setSelectedCategories] = useState([]);
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get('search') || '';
+  const categoryParam = searchParams.get('category');
+
+  const [selectedCategories, setSelectedCategories] = useState(categoryParam ? [categoryParam] : []);
   const [priceRange, setPriceRange] = useState([0, 1000]);
   const [selectedPriceRange, setSelectedPriceRange] = useState([0, 1000]);
   const [sortOption, setSortOption] = useState('featured');
-  
-  const searchParams = useSearchParams();
-  const searchQuery = searchParams.get('search') || '';
+
+  // Update selected categories when URL changes
+  useEffect(() => {
+    if (categoryParam) {
+      setSelectedCategories([categoryParam]);
+    }
+  }, [categoryParam]);
 
   // Enhanced SWR configuration
   const { data: products, error, mutate, isLoading, isValidating } = useSWR(
     'products',
     fetcher,
     {
-      revalidateOnFocus: true, // Revalidate when window gets focus
-      revalidateOnReconnect: true, // Revalidate when browser regains network connection
-      refreshInterval: 30000, // Refresh every 30 seconds
-      dedupingInterval: 5000, // Dedupe requests within 5 seconds
-      errorRetryCount: 3, // Retry failed requests 3 times
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      refreshInterval: 30000,
+      dedupingInterval: 5000,
+      errorRetryCount: 3,
       onError: (err) => {
         console.error('Error fetching products:', err);
       },
