@@ -65,10 +65,11 @@ export default function OrderConfirmation() {
   }
 
   // Calculate totals
-  const subtotal = Number(order.total) || 0;
+  const subtotal = order.items.reduce((total, item) => total + (item.price * item.quantity), 0);
+  const discount = order.coupon ? (subtotal * order.coupon.percentDiscount) / 100 : 0;
   const shippingCost = Number(order.shippingInfo?.shippingCost) || 0;
-  const tax = subtotal * 0.08;
-  const total = subtotal + shippingCost + tax;
+  const tax = (subtotal - discount) * 0.08;
+  const total = subtotal - discount + shippingCost + tax;
 
   return (
     <div className="bg-gray-50">
@@ -201,6 +202,15 @@ export default function OrderConfirmation() {
                   <dt className="font-medium text-gray-600">Subtotal</dt>
                   <dd className="text-gray-900">${subtotal.toFixed(2)}</dd>
                 </div>
+                {order.coupon && (
+                  <div className="flex justify-between">
+                    <dt className="font-medium text-gray-600">
+                      Discount ({order.coupon.percentDiscount}% off)
+                      <span className="ml-2 text-xs text-green-600">Code: {order.coupon.alias}</span>
+                    </dt>
+                    <dd className="text-green-600">-${discount.toFixed(2)}</dd>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <dt className="font-medium text-gray-600">Shipping</dt>
                   <dd className="text-gray-900">
@@ -213,7 +223,16 @@ export default function OrderConfirmation() {
                 </div>
                 <div className="flex justify-between border-t border-gray-200 pt-2 mt-2">
                   <dt className="font-medium text-gray-900">Total</dt>
-                  <dd className="font-bold text-indigo-600">${total.toFixed(2)}</dd>
+                  <dd className="font-bold text-indigo-600">
+                    {order.coupon ? (
+                      <div className="flex flex-col items-end">
+                        <span className="text-gray-500 line-through text-sm">${(subtotal + shippingCost + tax).toFixed(2)}</span>
+                        <span>${(subtotal - discount + shippingCost + tax).toFixed(2)}</span>
+                      </div>
+                    ) : (
+                      `$${(subtotal + shippingCost + tax).toFixed(2)}`
+                    )}
+                  </dd>
                 </div>
               </dl>
             </div>

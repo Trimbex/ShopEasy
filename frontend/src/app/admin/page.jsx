@@ -166,13 +166,13 @@ const AdminPanel = () => {
 
               <div className="bg-white overflow-hidden shadow rounded-lg">
                 <div className="px-4 py-5 sm:p-6">
-                  <h3 className="text-lg font-medium text-gray-900">Coupons</h3>
+                  <h3 className="text-lg font-medium text-gray-900">Deals</h3>
                   <div className="mt-3 text-sm">
-                    <p className="text-gray-500">Create and manage discount coupons</p>
+                    <p className="text-gray-500">Create and manage coupons, campaigns, and view deal telemetry</p>
                   </div>
                   <div className="mt-5">
-                    <Link href="/admin/coupons" className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
-                      Manage Coupons
+                    <Link href="/admin/deals" className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
+                      Manage Deals
                     </Link>
                   </div>
                 </div>
