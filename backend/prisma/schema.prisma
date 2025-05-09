@@ -124,3 +124,32 @@ enum OrderStatus {
   DELIVERED
   CANCELED
 }
+
+// Coupon model
+
+model Coupon {
+  id                String    @id @default(uuid())
+  alias             String    @unique
+  issuedAt          DateTime  @map("issued_at")
+  expiresAt         DateTime  @map("expires_at")
+  minPrice          Decimal   @map("min_price") @db.Decimal(10, 2)
+  percentDiscount   Int       @map("percent_discount")
+  usersWhoUsedMe    String[]  @map("users_who_used_me")
+  maxUsesPerUser    Int       @map("max_uses_per_user")
+  maxUsesTotal      Int       @map("max_uses_total")
+  isRunning         Boolean   @map("is_running")
+
+  @@map("coupons")
+}
+
+// Campaign model 
+model Campaign {
+  id        String   @id @default(uuid())
+  color     String //banner color
+  name      String
+  coupons   String[] @map("coupon_ids")
+  startDate DateTime @map("start_date")
+  endDate   DateTime @map("end_date")
+
+  @@map("campaigns")
+}
