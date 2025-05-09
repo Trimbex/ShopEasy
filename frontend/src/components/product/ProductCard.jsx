@@ -6,6 +6,33 @@ import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import SignInModal from '../auth/SignInModal';
 
+const styles = `
+  @keyframes checkmark {
+    0% {
+      transform: scale(0);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.2);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  .animate-checkmark {
+    animation: checkmark 0.5s ease-in-out forwards;
+  }
+`;
+
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement('style');
+  styleSheet.textContent = styles;
+  document.head.appendChild(styleSheet);
+}
+
 const ProductCard = ({ product }) => {
   const { id, name, price, description, imageUrl, stock } = product;
   const { addItem } = useCart();
@@ -24,6 +51,7 @@ const ProductCard = ({ product }) => {
     try {
       setIsAddingToCart(true);
       addItem(product, quantity);
+      await new Promise(resolve => setTimeout(resolve, 1000));
     } catch (error) {
       console.error('Error adding to cart:', error);
     } finally {
@@ -81,12 +109,31 @@ const ProductCard = ({ product }) => {
         </div>
         <button
           onClick={handleAddToCart}
-          className={`w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200 cursor-pointer active:bg-indigo-800 ${
-            stock <= 0 || isAddingToCart ? 'cursor-not-allowed' : ''
+          className={`w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 relative ${
+            stock <= 0 || isAddingToCart ? 'cursor-not-allowed opacity-75' : ''
           }`}
           disabled={stock <= 0 || isAddingToCart}
         >
-          {isAddingToCart ? 'Adding...' : 'Add to Cart'}
+          <span className={`transition-opacity duration-200 ${isAddingToCart ? 'opacity-0' : 'opacity-100'}`}>
+            Add to Cart
+          </span>
+          {isAddingToCart && (
+            <span className="absolute inset-0 flex items-center justify-center">
+              <svg 
+                className="w-6 h-6 text-white animate-checkmark" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </span>
+          )}
         </button>
       </div>
 
