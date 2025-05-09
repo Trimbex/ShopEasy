@@ -3,72 +3,33 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import api from '../../../services/api';
 
 export default function OrderConfirmation() {
   const { id } = useParams();
   const [order, setOrder] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Comment: This would fetch the order from an API
-    // const fetchOrder = async () => {
-    //   try {
-    //     const response = await fetch(`/api/orders/${id}`);
-    //     const data = await response.json();
-    //     setOrder(data);
-    //   } catch (error) {
-    //     console.error('Error fetching order:', error);
-    //   } finally {
-    //     setIsLoading(false);
-    //   }
-    // };
+    const fetchOrder = async () => {
+      try {
+        // Set the auth token for this request
+        api.defaults.headers.common['Authorization'] = `Bearer ${localStorage.getItem('token')}`;
+        
+        const { data } = await api.get(`/orders/${id}`);
+        setOrder(data);
+        setError(null);
+      } catch (error) {
+        console.error('Error fetching order:', error);
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch order';
+        setError(errorMessage);
+      } finally {
+        setIsLoading(false);
+      }
+    };
     
-    // Mock data for the order
-    setTimeout(() => {
-      const mockOrder = {
-        id,
-        orderNumber: '1234-5678-9012',
-        createdAt: new Date().toISOString(),
-        status: 'PENDING',
-        items: [
-          {
-            id: 'item1',
-            name: 'Premium Wireless Headphones',
-            price: 99.99,
-            quantity: 1,
-            imageUrl: '/images/products/headphones.jpg'
-          },
-          {
-            id: 'item2',
-            name: 'Smart Fitness Watch',
-            price: 129.99,
-            quantity: 1,
-            imageUrl: '/images/products/watch.jpg'
-          }
-        ],
-        subtotal: 229.98,
-        shipping: 0,
-        tax: 18.40,
-        total: 248.38,
-        shippingAddress: {
-          name: 'John Doe',
-          address: '123 Main St',
-          city: 'Anytown',
-          state: 'CA',
-          postalCode: '12345',
-          country: 'United States'
-        },
-        paymentMethod: {
-          type: 'Credit Card',
-          last4: '4242'
-        }
-      };
-      
-      setOrder(mockOrder);
-      setIsLoading(false);
-    }, 1000);
-    
-    // fetchOrder();
+    fetchOrder();
   }, [id]);
 
   if (isLoading) {
@@ -82,16 +43,16 @@ export default function OrderConfirmation() {
     );
   }
 
-  if (!order) {
+  if (error || !order) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="bg-white shadow-sm rounded-lg p-8 text-center">
-          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg className="mx-auto h-12 w-12 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <h2 className="mt-2 text-lg font-medium text-gray-900">Order not found</h2>
+          <h2 className="mt-2 text-lg font-medium text-gray-900">Error Loading Order</h2>
           <p className="mt-1 text-sm text-gray-500">
-            We couldn't find an order with the ID you provided.
+            {error || "We couldn't find the order you're looking for."}
           </p>
           <div className="mt-6">
             <Link href="/" className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
@@ -102,6 +63,12 @@ export default function OrderConfirmation() {
       </div>
     );
   }
+
+  // Calculate totals
+  const subtotal = Number(order.total) || 0;
+  const shippingCost = Number(order.shippingInfo?.shippingCost) || 0;
+  const tax = subtotal * 0.08;
+  const total = subtotal + shippingCost + tax;
 
   return (
     <div className="bg-gray-50">
@@ -117,7 +84,7 @@ export default function OrderConfirmation() {
             </div>
             <h1 className="text-3xl font-bold text-gray-900">Thank you for your order!</h1>
             <p className="mt-2 text-lg text-gray-600">
-              Your order #{order.orderNumber} has been placed successfully.
+              Your order #{order.id} has been placed successfully.
             </p>
             <p className="mt-1 text-sm text-gray-500">
               {new Date(order.createdAt).toLocaleDateString()} at {new Date(order.createdAt).toLocaleTimeString()}
@@ -131,12 +98,17 @@ export default function OrderConfirmation() {
               <dl className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <dt className="font-medium text-gray-600">Order number:</dt>
-                  <dd className="text-gray-900">{order.orderNumber}</dd>
+                  <dd className="text-gray-900">{order.id}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="font-medium text-gray-600">Status:</dt>
                   <dd>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      order.status === 'DELIVERED' ? 'bg-green-100 text-green-800' :
+                      order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-800' :
+                      order.status === 'PROCESSING' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
                       {order.status}
                     </span>
                   </dd>
@@ -147,7 +119,9 @@ export default function OrderConfirmation() {
                 </div>
                 <div className="flex justify-between">
                   <dt className="font-medium text-gray-600">Payment method:</dt>
-                  <dd className="text-gray-900">{order.paymentMethod.type} (**** {order.paymentMethod.last4})</dd>
+                  <dd className="text-gray-900">
+                    {order.paymentInfo?.type || 'Credit Card'} (**** {order.paymentInfo?.cardNumber?.slice(-4) || '0000'})
+                  </dd>
                 </div>
               </dl>
             </div>
@@ -156,12 +130,12 @@ export default function OrderConfirmation() {
               <h2 className="text-lg font-medium text-gray-900 mb-4">Shipping Information</h2>
               
               <address className="not-italic text-sm text-gray-600">
-                <p className="font-medium text-gray-900">{order.shippingAddress.name}</p>
-                <p>{order.shippingAddress.address}</p>
+                <p className="font-medium text-gray-900">{order.shippingInfo?.name}</p>
+                <p>{order.shippingInfo?.address}</p>
                 <p>
-                  {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}
+                  {order.shippingInfo?.city}, {order.shippingInfo?.state} {order.shippingInfo?.postalCode}
                 </p>
-                <p className="mt-2">{order.shippingAddress.country}</p>
+                <p className="mt-2">{order.shippingInfo?.country}</p>
               </address>
             </div>
           </div>
@@ -188,20 +162,20 @@ export default function OrderConfirmation() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {order.items.map((item) => (
+                  {order.items?.map((item) => (
                     <tr key={item.id}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10 bg-gray-200 rounded overflow-hidden">
                             <img
-                              src={item.imageUrl}
-                              alt={item.name}
+                              src={item.product?.imageUrl}
+                              alt={item.product?.name}
                               className="h-full w-full object-cover"
                             />
                           </div>
                           <div className="ml-4">
                             <div className="text-sm font-medium text-gray-900">
-                              {item.name}
+                              {item.product?.name}
                             </div>
                           </div>
                         </div>
@@ -210,10 +184,10 @@ export default function OrderConfirmation() {
                         {item.quantity}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
-                        ${item.price.toFixed(2)}
+                        ${Number(item.price).toFixed(2)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900">
-                        ${(item.price * item.quantity).toFixed(2)}
+                        ${(Number(item.price) * item.quantity).toFixed(2)}
                       </td>
                     </tr>
                   ))}
@@ -225,21 +199,21 @@ export default function OrderConfirmation() {
               <dl className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <dt className="font-medium text-gray-600">Subtotal</dt>
-                  <dd className="text-gray-900">${order.subtotal.toFixed(2)}</dd>
+                  <dd className="text-gray-900">${subtotal.toFixed(2)}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="font-medium text-gray-600">Shipping</dt>
                   <dd className="text-gray-900">
-                    {order.shipping === 0 ? 'Free' : `$${order.shipping.toFixed(2)}`}
+                    {shippingCost === 0 ? 'Free' : `$${shippingCost.toFixed(2)}`}
                   </dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="font-medium text-gray-600">Tax</dt>
-                  <dd className="text-gray-900">${order.tax.toFixed(2)}</dd>
+                  <dd className="text-gray-900">${tax.toFixed(2)}</dd>
                 </div>
                 <div className="flex justify-between border-t border-gray-200 pt-2 mt-2">
                   <dt className="font-medium text-gray-900">Total</dt>
-                  <dd className="font-bold text-indigo-600">${order.total.toFixed(2)}</dd>
+                  <dd className="font-bold text-indigo-600">${total.toFixed(2)}</dd>
                 </div>
               </dl>
             </div>
@@ -254,7 +228,7 @@ export default function OrderConfirmation() {
               <Link href="/" className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
                 Continue Shopping
               </Link>
-              <Link href="/account/orders" className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50">
+              <Link href="/profile?tab=orders" className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50">
                 View Order History
               </Link>
             </div>
