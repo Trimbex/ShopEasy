@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -104,68 +105,50 @@ export default function CheckoutPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!validateForm()) return;
     
     setIsSubmitting(true);
     
-    // Comment: This would be an API call in a real app
-    // const checkoutData = {
-    //   items: cartItems.map(item => ({
-    //     productId: item.id,
-    //     quantity: item.quantity,
-    //     price: item.price
-    //   })),
-    //   customer: {
-    //     firstName: formData.firstName,
-    //     lastName: formData.lastName,
-    //     email: formData.email
-    //   },
-    //   shipping: {
-    //     address: formData.address,
-    //     city: formData.city,
-    //     state: formData.state,
-    //     postalCode: formData.postalCode,
-    //     country: formData.country
-    //   },
-    //   payment: {
-    //     cardName: formData.cardName,
-    //     cardNumber: formData.cardNumber,
-    //     expirationDate: formData.expirationDate,
-    //     cvv: formData.cvv
-    //   },
-    //   total: getCartTotal()
-    // };
-    // 
-    // try {
-    //   const response = await fetch('/api/orders', {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //     },
-    //     body: JSON.stringify(checkoutData)
-    //   });
-    //   
-    //   if (response.ok) {
-    //     const data = await response.json();
-    //     clearCart();
-    //     router.push(`/order-confirmation/${data.orderId}`);
-    //   } else {
-    //     // Handle API error
-    //     setIsSubmitting(false);
-    //   }
-    // } catch (error) {
-    //   console.error('Checkout error:', error);
-    //   setIsSubmitting(false);
-    // }
+    const checkoutData = {
+      shippingInfo: {
+        name: `${formData.firstName} ${formData.lastName}`,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        postalCode: formData.postalCode,
+        country: formData.country,
+        shippingCost: shippingEstimate
+      },
+      paymentInfo: {
+        type: 'Credit Card',
+        cardName: formData.cardName,
+        cardNumber: formData.cardNumber,
+        expirationDate: formData.expirationDate,
+        cvv: formData.cvv
+      },
+      items: cartItems.map(item => ({
+        productId: item.id,
+        quantity: item.quantity
+      }))
+    };
     
-    // Simulate successful checkout
-    setTimeout(() => {
+    try {
+      // Set the auth token for this request
+      api.defaults.headers.common['Authorization'] = `Bearer ${localStorage.getItem('token')}`;
+      
+      const { data } = await api.post('/orders', checkoutData);
       clearCart();
-      router.push('/order-confirmation/123456');
-    }, 1500);
+      router.push(`/order-confirmation/${data.id}`);
+    } catch (error) {
+      console.error('Checkout error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to create order. Please try again.';
+      setErrors({ form: errorMessage });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const subtotal = getCartTotal();

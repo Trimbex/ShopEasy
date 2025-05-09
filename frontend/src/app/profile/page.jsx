@@ -1,17 +1,23 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 
 export default function ProfilePage() {
   const { user, isAuthenticated, logout, updateProfile, loading: authLoading, error: authError, setError } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   
   const [activeTab, setActiveTab] = useState('profile');
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState(null);
+  const [isCanceling, setIsCanceling] = useState(false);
   
   const [profileForm, setProfileForm] = useState({
     name: '',
@@ -23,6 +29,14 @@ export default function ProfilePage() {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
+
+  // Set active tab from URL query parameter
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ['profile', 'orders', 'addresses'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -42,48 +56,24 @@ export default function ProfilePage() {
         newPassword: '',
       }));
 
-      // Comment: This would fetch the user's orders from an API
-      // const fetchOrders = async () => {
-      //   try {
-      //     const response = await fetch('/api/orders');
-      //     const data = await response.json();
-      //     setOrders(data);
-      //   } catch (error) {
-      //     console.error('Error fetching orders:', error);
-      //   }
-      // };
-      
-      // Mock order data
-      const mockOrders = [
-        {
-          id: 'order1',
-          orderNumber: '1234-5678-9012',
-          date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-          status: 'DELIVERED',
-          total: 248.38,
-          items: [
-            { name: 'Premium Wireless Headphones', quantity: 1 },
-            { name: 'Smart Fitness Watch', quantity: 1 }
-          ]
-        },
-        {
-          id: 'order2',
-          orderNumber: '2345-6789-0123',
-          date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-          status: 'DELIVERED',
-          total: 134.97,
-          items: [
-            { name: 'Portable Bluetooth Speaker', quantity: 1 },
-            { name: 'Leather Wallet', quantity: 1 },
-            { name: 'Organic Face Cream', quantity: 1 }
-          ]
+      const fetchOrders = async () => {
+        try {
+          // Set the auth token for this request
+          api.defaults.headers.common['Authorization'] = `Bearer ${localStorage.getItem('token')}`;
+          
+          const { data } = await api.get('/orders/myorders');
+          setOrders(data);
+          setError(null);
+        } catch (error) {
+          console.error('Error fetching orders:', error);
+          const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch orders';
+          setError(errorMessage);
+        } finally {
+          setIsLoading(false);
         }
-      ];
+      };
       
-      setOrders(mockOrders);
-      setIsLoading(false);
-      
-      // fetchOrders();
+      fetchOrders();
     }
   }, [user]);
 
@@ -122,9 +112,160 @@ export default function ProfilePage() {
     router.push('/');
   };
 
+  const handleCancelOrder = async (orderId) => {
+    setOrderToCancel(orderId);
+    setCancelModalOpen(true);
+  };
+
+  const confirmCancelOrder = async () => {
+    if (!orderToCancel) return;
+    
+    setIsCanceling(true);
+    try {
+      // Set the auth token for this request
+      api.defaults.headers.common['Authorization'] = `Bearer ${localStorage.getItem('token')}`;
+      
+      const { data } = await api.put(`/orders/${orderToCancel}/cancel`);
+      
+      // Update the orders list with the canceled order
+      setOrders(orders.map(order => 
+        order.id === orderToCancel ? { ...order, status: 'CANCELED' } : order
+      ));
+      
+      setCancelModalOpen(false);
+      setOrderToCancel(null);
+    } catch (error) {
+      console.error('Error canceling order:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to cancel order';
+      setError(errorMessage);
+    } finally {
+      setIsCanceling(false);
+    }
+  };
+
   if (!isAuthenticated && !user) {
     return null; // Will redirect in useEffect
   }
+
+  const renderOrders = () => {
+    if (isLoading) {
+      return (
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-gray-200 rounded-lg h-24"></div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">Error loading orders</h3>
+              <p className="mt-1 text-sm text-red-700">{error}</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (orders.length === 0) {
+      return (
+        <div className="text-center py-12">
+          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+          </svg>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No orders found</h3>
+          <p className="mt-1 text-sm text-gray-500">Get started by creating a new order.</p>
+          <div className="mt-6">
+            <Link href="/products" className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+              Browse Products
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {orders.map((order) => (
+          <div key={order.id} className={`bg-white shadow-sm rounded-lg p-6 ${
+            order.status === 'CANCELED' ? 'opacity-60' : ''
+          }`}>
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className={`text-lg font-medium ${
+                  order.status === 'CANCELED' ? 'text-gray-500 line-through' : 'text-gray-900'
+                }`}>
+                  Order #{order.id}
+                </h3>
+                <p className={`mt-1 text-sm ${
+                  order.status === 'CANCELED' ? 'text-gray-400' : 'text-gray-500'
+                }`}>
+                  {new Date(order.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+              <div className="flex items-center space-x-4">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  order.status === 'DELIVERED' ? 'bg-green-100 text-green-800' :
+                  order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-800' :
+                  order.status === 'PROCESSING' ? 'bg-yellow-100 text-yellow-800' :
+                  order.status === 'CANCELED' ? 'bg-gray-100 text-gray-500' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {order.status}
+                </span>
+                {order.status === 'PENDING' && (
+                  <button
+                    onClick={() => handleCancelOrder(order.id)}
+                    className="text-sm font-medium text-red-600 hover:text-red-500 focus:outline-none"
+                  >
+                    Cancel Order
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="mt-4">
+              <div className="flex justify-between text-sm">
+                <span className={`${
+                  order.status === 'CANCELED' ? 'text-gray-400' : 'text-gray-500'
+                }`}>
+                  Total
+                </span>
+                <span className={`font-medium ${
+                  order.status === 'CANCELED' ? 'text-gray-500 line-through' : 'text-gray-900'
+                }`}>
+                  ${Number(order.total).toFixed(2)}
+                </span>
+              </div>
+            </div>
+            <div className="mt-4">
+              <Link 
+                href={`/order-confirmation/${order.id}`} 
+                className={`text-sm font-medium ${
+                  order.status === 'CANCELED' 
+                    ? 'text-gray-400 hover:text-gray-500' 
+                    : 'text-indigo-600 hover:text-indigo-500'
+                }`}
+              >
+                View details <span aria-hidden="true">&rarr;</span>
+              </Link>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="bg-gray-50">
@@ -322,89 +463,7 @@ export default function ProfilePage() {
                   <h2 className="text-xl font-bold text-gray-900">Order History</h2>
                 </div>
                 
-                {isLoading ? (
-                  <div className="p-6">
-                    <div className="animate-pulse space-y-4">
-                      {[...Array(3)].map((_, i) => (
-                        <div key={i} className="h-16 bg-gray-200 rounded"></div>
-                      ))}
-                    </div>
-                  </div>
-                ) : orders.length === 0 ? (
-                  <div className="p-6 text-center">
-                    <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                    </svg>
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">No orders yet</h3>
-                    <p className="mt-1 text-sm text-gray-500">
-                      You haven't placed any orders yet.
-                    </p>
-                    <div className="mt-6">
-                      <Link href="/products" className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
-                        Start Shopping
-                      </Link>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Order
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Date
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Status
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Total
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {orders.map((order) => (
-                          <tr key={order.id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              #{order.orderNumber}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {new Date(order.date).toLocaleDateString()}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                order.status === 'DELIVERED' 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : order.status === 'SHIPPED' 
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : order.status === 'PROCESSING'
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : order.status === 'CANCELED'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-gray-100 text-gray-800'
-                              }`}>
-                                {order.status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              ${order.total.toFixed(2)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              <Link href={`/order-confirmation/${order.id}`} className="text-indigo-600 hover:text-indigo-900">
-                                View
-                              </Link>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                {renderOrders()}
               </div>
             )}
 
@@ -491,6 +550,45 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+      
+      {/* Cancel Order Confirmation Modal */}
+      {cancelModalOpen && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="text-center">
+              <svg className="mx-auto h-12 w-12 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <h3 className="mt-2 text-lg font-medium text-gray-900">Cancel Order</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Are you sure you want to cancel this order? This action cannot be undone.
+              </p>
+            </div>
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setCancelModalOpen(false);
+                  setOrderToCancel(null);
+                }}
+                className="inline-flex justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Keep Order
+              </button>
+              <button
+                type="button"
+                onClick={confirmCancelOrder}
+                disabled={isCanceling}
+                className={`inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 ${
+                  isCanceling ? 'opacity-70 cursor-not-allowed' : ''
+                }`}
+              >
+                {isCanceling ? 'Canceling...' : 'Yes, Cancel Order'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
