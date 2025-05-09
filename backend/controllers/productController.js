@@ -4,12 +4,59 @@ const prisma = new PrismaClient();
 // Get all products
 export const getProducts = async (req, res) => {
   try {
-    const products = await prisma.product.findMany({
+    const { category, minRating } = req.query;
+    
+    // Build the query options
+    const queryOptions = {
       include: {
-        reviews: true
+        reviews: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        }
       }
+    };
+    
+    // Add category filter if provided
+    if (category) {
+      queryOptions.where = {
+        ...queryOptions.where,
+        category
+      };
+    }
+    
+    // Get products with the specified filters
+    const products = await prisma.product.findMany(queryOptions);
+
+    // Format products with calculated average ratings
+    const formattedProducts = products.map(product => {
+      // Calculate average rating
+      const averageRating = product.reviews.length > 0
+        ? product.reviews.reduce((acc, review) => acc + review.rating, 0) / product.reviews.length
+        : 0;
+      
+      return {
+        ...product,
+        price: Number(product.price),
+        averageRating: Number(averageRating.toFixed(1))
+      };
     });
-    res.json(products);
+    
+    // Filter by minimum rating if specified
+    let filteredProducts = formattedProducts;
+    if (minRating && !isNaN(Number(minRating))) {
+      const minRatingValue = Number(minRating);
+      filteredProducts = formattedProducts.filter(product => 
+        product.averageRating >= minRatingValue
+      );
+    }
+    
+    res.json(filteredProducts);
   } catch (error) {
     console.error('Error fetching products:', error);
     res.status(500).json({ error: 'Error fetching products' });
