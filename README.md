@@ -1,104 +1,129 @@
 # Ecommerce Store
 
-A full-stack ecommerce application built with Node.js, Express, and Supabase.
+A full-stack e-commerce platform built with a modern web stack. This repository contains both the backend (API, database, business logic) and frontend (user interface) for a complete online store.
 
-## Prerequisites
 
-Before you begin, ensure you have the following installed:
-- Node.js (v14 or higher)
-- npm (Node Package Manager)
-- A Supabase account
+## Features
 
-## Setup
-
-1. Clone the repository:
-```bash
-git clone <your-repository-url>
-cd Ecommerce_Store
-```
-
-2. Install dependencies:
-```bash
-# Install backend dependencies
-cd backend
-npm install
-
-# Install frontend dependencies
-cd ../frontend
-npm install
-```
-
-3. Create a `.env` file in the backend directory with the following variables:
-```env
-PORT=3000
-JWT_SECRET=your_jwt_secret
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-4. Set up your Supabase database:
-- Create a new project in Supabase
-- Create a `users` table with the following columns:
-  - id (uuid, primary key)
-  - name (text)
-  - email (text, unique)
-  - password (text)
-- Copy your Supabase URL and anon key to the `.env` file
-
-## Running the Project
-
-1. Start the backend server:
-```bash
-cd backend
-npm start
-```
-
-2. Open a new terminal and start the frontend development server:
-```bash
-cd frontend
-npm start
-```
-
-3. Access the application:
-- Open your browser and navigate to `http://localhost:3000`
+- User authentication and registration
+- Product catalog with categories and filters
+- Shopping cart and checkout flow
+- Order management
+- Admin dashboard for campaigns, deals, and orders
+- Responsive frontend UI
 
 ## Project Structure
 
 ```
-Ecommerce_Store/
-├── backend/
-│   ├── controllers/
-│   ├── middleware/
-│   ├── routes/
-│   ├── utils/
-│   ├── server.js
-│   └── .env
-└── frontend/
-    ├── css/
-    ├── js/
-    ├── images/
-    ├── index.html
-    ├── login.html
-    ├── register.html
-    └── cart.html
+Ecommerce Final/
+  Ecommerce_Store/
+    archive/                # Old or backup code
+    backend/                # Backend API and business logic
+      controllers/
+      middleware/
+      prisma/               # Prisma ORM and migrations
+      routes/
+      utils/
+    frontend/               # Frontend (Next.js app)
+      public/
+      src/
+        app/                # App routes and pages
+        components/         # Reusable UI components
+        context/            # React context providers
+        services/           # API and business logic services
+      utils/
+    migrations/             # SQL migration files
+  package-lock.json
 ```
 
-## Features
+## Tech Stack
 
-- User authentication (login/register)
-- Product browsing
-- Shopping cart functionality
-- Secure payment processing
-- Responsive design
+- **Frontend:** Next.js, React, CSS
+- **Backend:** Node.js, Express.js
+- **Database:** PostgreSQL (via Prisma ORM)
+- **Authentication:** JWT or similar (customizable)
+- **Other:** RESTful APIs, modern JavaScript/TypeScript
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v18+ recommended)
+- npm or yarn
+- PostgreSQL (or your preferred database)
+
+### Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone <repo-url>
+   cd "Ecommerce Final"
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
+
+3. **Set up environment variables:**
+   - Copy `.env.example` to `.env` in both `backend/` and `frontend/` if available.
+   - Fill in your database credentials and other secrets.
+
+4. **Run database migrations:**
+   ```bash
+   cd Ecommerce_Store/backend
+   npx prisma migrate deploy
+   ```
+
+5. **Start the backend server:**
+   ```bash
+   npm run dev
+   ```
+
+6. **Start the frontend:**
+   ```bash
+   cd ../frontend
+   npm run dev
+   ```
+
+7. **Visit the app:**
+   - Frontend: [http://localhost:3000](http://localhost:3000)
+   - Backend API: [http://localhost:5000](http://localhost:5000) (or your configured port)
+
+## Development
+
+- **Frontend:** All source code is in `Ecommerce_Store/frontend/src/`.
+- **Backend:** All source code is in `Ecommerce_Store/backend/`.
+- **Migrations:** Use Prisma for schema and migration management.
+
+## Database Migrations
+
+- Prisma migrations are in `Ecommerce_Store/backend/prisma/migrations/`.
+- SQL migrations (if any) are in `migrations/sql/`.
+
+## Scripts
+
+Common scripts (run from the root or respective subfolders):
+
+- `npm run dev` — Start development server
+- `npm run build` — Build for production
+- `npm run start` — Start production server
+- `npx prisma migrate dev` — Run migrations and generate Prisma client
 
 ## Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+2. Create your feature branch (`git checkout -b feature/YourFeature`)
+3. Commit your changes (`git commit -am 'Add some feature'`)
+4. Push to the branch (`git push origin feature/YourFeature`)
+5. Open a pull request
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License.
+
+---
+
+**Feel free to update this README with more specific details about your project, screenshots, or deployment instructions!**
