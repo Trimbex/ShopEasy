@@ -9,9 +9,9 @@ import { useSearchParams } from 'next/navigation';
 import { productsApi } from '../../services/api';
 
 // SWR fetcher function
-const fetcher = async (url) => {
+const fetcher = async (url, { minRating, category } = {}) => {
   try {
-    const response = await productsApi.getAll();
+    const response = await productsApi.getAll({ minRating, category });
     return response;
   } catch (error) {
     throw new Error('Failed to fetch products');
@@ -27,6 +27,7 @@ const ProductsPage = () => {
   const [priceRange, setPriceRange] = useState([0, 1000]);
   const [selectedPriceRange, setSelectedPriceRange] = useState([0, 1000]);
   const [sortOption, setSortOption] = useState('featured');
+  const [minRating, setMinRating] = useState(0);
 
   // Update selected categories when URL changes
   useEffect(() => {
@@ -35,26 +36,32 @@ const ProductsPage = () => {
     }
   }, [categoryParam]);
 
+  // Refetch when minRating changes
+  useEffect(() => {
+    if (mutate) {
+      mutate();
+    }
+  }, [minRating, mutate]);
+
   // Enhanced SWR configuration
   const { data: products, error, mutate, isLoading, isValidating } = useSWR(
-    'products',
-    fetcher,
+    ['products', { minRating, category: selectedCategories[0] }],
+    ([url, params]) => fetcher(url, params),
     {
       revalidateOnFocus: true,
       revalidateOnReconnect: true,
-      refreshInterval: 30000,
       dedupingInterval: 5000,
       errorRetryCount: 3,
       onError: (err) => {
         console.error('Error fetching products:', err);
       },
       onSuccess: (data) => {
-        console.log('Products fetched successfully:', data);
+        console.log('Products fetched successfully:', data.length);
       }
     }
   );
 
-  // Filter products based on search, categories, and price range
+  // Filter products based on search, categories, price range, and rating
   const filteredProducts = products?.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          product.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -65,7 +72,10 @@ const ProductsPage = () => {
     const matchesPrice = product.price >= selectedPriceRange[0] && 
                         product.price <= selectedPriceRange[1];
     
-    return matchesSearch && matchesCategory && matchesPrice;
+    const matchesRating = minRating === 0 || 
+                         (product.averageRating >= minRating);
+    
+    return matchesSearch && matchesCategory && matchesPrice && matchesRating;
   }) || [];
 
   // Sort products
@@ -79,6 +89,8 @@ const ProductsPage = () => {
         return a.name.localeCompare(b.name);
       case 'name-desc':
         return b.name.localeCompare(a.name);
+      case 'rating-high':
+        return b.averageRating - a.averageRating;
       default:
         return 0;
     }
@@ -142,6 +154,8 @@ const ProductsPage = () => {
             priceRange={priceRange}
             selectedPriceRange={selectedPriceRange}
             onPriceRangeChange={setSelectedPriceRange}
+            selectedRating={minRating}
+            onRatingChange={setMinRating}
           />
         </div>
         
@@ -161,6 +175,7 @@ const ProductsPage = () => {
               <option value="price-high">Price: High to Low</option>
               <option value="name-asc">Name: A to Z</option>
               <option value="name-desc">Name: Z to A</option>
+              <option value="rating-high">Highest Rated</option>
             </select>
             
             {isValidating && (
@@ -170,11 +185,54 @@ const ProductsPage = () => {
             )}
           </div>
           
+          <div className="mb-4">
+            <div className="flex flex-wrap gap-2">
+              {selectedCategories.length > 0 && (
+                <div className="flex items-center">
+                  <span className="text-sm mr-2">Categories:</span>
+                  {selectedCategories.map(cat => (
+                    <span key={cat} className="text-xs bg-gray-100 px-2 py-1 rounded-full flex items-center mr-1">
+                      {cat}
+                      <button 
+                        onClick={() => setSelectedCategories(selectedCategories.filter(c => c !== cat))}
+                        className="ml-1 text-gray-500 hover:text-gray-700"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              
+              {minRating > 0 && (
+                <div className="flex items-center">
+                  <span className="text-sm mr-2">Rating:</span>
+                  <span className="text-xs bg-gray-100 px-2 py-1 rounded-full flex items-center">
+                    {minRating}+ Stars
+                    <button 
+                      onClick={() => setMinRating(0)}
+                      className="ml-1 text-gray-500 hover:text-gray-700"
+                    >
+                      ×
+                    </button>
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+          
           <ProductGrid 
             products={sortedProducts} 
             onProductUpdate={mutate}
             isValidating={isValidating}
           />
+          
+          {sortedProducts.length === 0 && (
+            <div className="text-center py-12 bg-gray-50 rounded-lg">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
+              <p className="text-gray-500">Try adjusting your filters or search criteria</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
