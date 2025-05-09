@@ -109,10 +109,7 @@ export const productsApi = {
     // Build query string from params
     const queryParams = new URLSearchParams();
     
-    if (params.category) {
-      queryParams.append('category', params.category);
-    }
-    
+    // No need to append category parameter as we'll filter client-side
     if (params.minRating && params.minRating > 0) {
       queryParams.append('minRating', params.minRating);
     }

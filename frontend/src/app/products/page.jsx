@@ -38,7 +38,7 @@ const ProductsPage = () => {
 
   // Enhanced SWR configuration
   const { data: products, error, mutate, isLoading, isValidating } = useSWR(
-    ['products', { minRating, category: selectedCategories[0] }],
+    ['products', { minRating }],
     ([url, params]) => fetcher(url, params),
     {
       revalidateOnFocus: true,
@@ -63,9 +63,16 @@ const ProductsPage = () => {
 
   // Filter products based on search, categories, price range, and rating
   const filteredProducts = products?.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         product.description.toLowerCase().includes(searchQuery.toLowerCase());
+    // Case insensitive search with fuzzy matching (partial word matching)
+    const searchTerms = searchQuery.toLowerCase().split(' ').filter(term => term.length > 0);
+    const matchesSearch = searchQuery === '' || searchTerms.some(term => 
+      product.name.toLowerCase().includes(term) ||
+      product.description.toLowerCase().includes(term) ||
+      product.category.toLowerCase().includes(term) ||
+      (product.tags && product.tags.some(tag => tag.toLowerCase().includes(term)))
+    );
     
+    // Check if ANY selected category matches (not just the first one)
     const matchesCategory = selectedCategories.length === 0 || 
                            selectedCategories.includes(product.category);
     
