@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
-import SignInModal from '../auth/SignInModal';
 
 const styles = `
   @keyframes checkmark {
@@ -33,21 +32,19 @@ if (typeof document !== 'undefined') {
   document.head.appendChild(styleSheet);
 }
 
-const ProductCard = ({ product }) => {
+const ProductCard = ({ product, onShowSignInModal }) => {
   const { id, name, price, description, imageUrl, stock } = product;
   const { addItem } = useCart();
   const { isAuthenticated } = useAuth();
   const [isAddingToCart, setIsAddingToCart] = useState(false);
-  const [showSignInModal, setShowSignInModal] = useState(false);
   const [quantity, setQuantity] = useState(1);
 
   const handleAddToCart = async () => {
     if (!isAuthenticated) {
-      setShowSignInModal(true);
+      if (onShowSignInModal) onShowSignInModal();
       return;
     }
     if (stock <= 0) return;
-    
     try {
       setIsAddingToCart(true);
       addItem(product, quantity);
@@ -136,11 +133,6 @@ const ProductCard = ({ product }) => {
           )}
         </button>
       </div>
-
-      <SignInModal 
-        isOpen={showSignInModal} 
-        onClose={() => setShowSignInModal(false)} 
-      />
     </div>
   );
 };
