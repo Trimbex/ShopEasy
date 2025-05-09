@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import Link from 'next/link';
+import api from '../../services/api';
 
 const AdminPanel = () => {
   const router = useRouter();
@@ -11,6 +12,7 @@ const AdminPanel = () => {
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [timePeriod, setTimePeriod] = useState('all');
 
   useEffect(() => {
     // Redirect if not admin
@@ -19,37 +21,33 @@ const AdminPanel = () => {
     }
   }, [isAuthenticated, loading, router, user]);
 
-  useEffect(() => {
-    const fetchAdminStats = async () => {
-      try {
-        if (isAuthenticated && user?.isAdmin) {
-          const token = localStorage.getItem('token');
-          const response = await fetch('http://localhost:5000/api/admin/dashboard', {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            setStats(data.stats);
-          } else {
-            const errorData = await response.json();
-            setError(errorData.message || 'Failed to fetch admin data');
-          }
-        }
-      } catch (err) {
-        setError('Error fetching admin data');
-        console.error(err);
-      } finally {
-        setLoadingStats(false);
+  const fetchDashboardStats = async (period = 'all') => {
+    try {
+      setLoadingStats(true);
+      if (isAuthenticated && user?.isAdmin) {
+        const token = localStorage.getItem('token');
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        const { data } = await api.get(`/admin/dashboard?period=${period}`);
+        setStats(data.stats);
+        setError(null);
       }
-    };
-
-    if (isAuthenticated && user?.isAdmin) {
-      fetchAdminStats();
+    } catch (err) {
+      console.error('Error fetching admin data:', err);
+      setError('Failed to fetch dashboard data');
+    } finally {
+      setLoadingStats(false);
     }
-  }, [isAuthenticated, user]);
+  };
+
+  useEffect(() => {
+    if (isAuthenticated && user?.isAdmin) {
+      fetchDashboardStats(timePeriod);
+    }
+  }, [isAuthenticated, user, timePeriod]);
+
+  const handlePeriodChange = (e) => {
+    setTimePeriod(e.target.value);
+  };
 
   if (loading || (!isAuthenticated || !user?.isAdmin)) {
     return (
@@ -127,12 +125,99 @@ const AdminPanel = () => {
               <div className="bg-white overflow-hidden shadow rounded-lg">
                 <div className="px-4 py-5 sm:p-6">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Recent Orders</dt>
+                    <dt className="text-sm font-medium text-gray-500 truncate">
+                      {timePeriod === 'all' ? 'Recent Orders' : 
+                      timePeriod === '24h' ? 'Orders (24h)' : 
+                      timePeriod === 'week' ? 'Orders (Week)' : 'Orders (Month)'}
+                    </dt>
                     <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats?.recentOrders || 0}</dd>
                   </dl>
                 </div>
               </div>
             </div>
+
+            {/* Recent Orders Section */}
+            {stats?.recentOrdersData && (
+              <div className="bg-white shadow rounded-lg overflow-hidden mb-8">
+                <div className="px-4 py-5 sm:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900">
+                    {timePeriod === 'all' ? 'Recent Orders' : 
+                      timePeriod === '24h' ? 'Orders (Last 24 Hours)' : 
+                      timePeriod === 'week' ? 'Orders (Last Week)' : 'Orders (Last Month)'}
+                  </h3>
+                  <div className="mt-3 sm:mt-0 flex items-center">
+                    <label htmlFor="time-period" className="block text-sm font-medium text-gray-700 mr-2">
+                      Time Period:
+                    </label>
+                    <select
+                      id="time-period"
+                      value={timePeriod}
+                      onChange={handlePeriodChange}
+                      className="block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
+                    >
+                      <option value="all">All Time</option>
+                      <option value="24h">Last 24 Hours</option>
+                      <option value="week">Last Week</option>
+                      <option value="month">Last Month</option>
+                    </select>
+                  </div>
+                </div>
+                {stats.recentOrdersData.length > 0 ? (
+                  <>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {stats.recentOrdersData.map((order) => (
+                            <tr key={order.id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {order.id.substring(0, 8)}...
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {order.customer}
+                                <div className="text-xs text-gray-400">{order.email}</div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                ${order.total.toFixed(2)}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                  ${order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' : 
+                                  order.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 
+                                  order.status === 'CANCELED' ? 'bg-red-100 text-red-800' : 
+                                  'bg-gray-100 text-gray-800'}`}>
+                                  {order.status}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {new Date(order.createdAt).toLocaleDateString()}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="bg-gray-50 px-4 py-3 text-right sm:px-6">
+                      <Link href="/admin/orders" className="text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                        View all orders →
+                      </Link>
+                    </div>
+                  </>
+                ) : (
+                  <div className="px-4 py-5 sm:p-6 text-center text-gray-500">
+                    No orders found for the selected time period.
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Admin Navigation */}
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">

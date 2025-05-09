@@ -213,4 +213,58 @@ export const userApi = {
   },
 };
 
+// Campaigns API
+export const campaignsApi = {
+  // Get active campaigns for public display
+  getActive: async () => {
+    const response = await api.get('/campaigns/active');
+    return response.data;
+  },
+  
+  // Admin: Get all campaigns
+  getAll: async () => {
+    const response = await api.get('/campaigns');
+    return response.data;
+  },
+  
+  // Admin: Get a single campaign
+  getOne: async (id) => {
+    const response = await api.get(`/campaigns/${id}`);
+    return response.data;
+  },
+  
+  // Admin: Create a new campaign
+  create: async (campaignData) => {
+    const response = await api.post('/campaigns', campaignData);
+    return response.data;
+  },
+  
+  // Admin: Update a campaign
+  update: async (id, campaignData) => {
+    const response = await api.put(`/campaigns/${id}`, campaignData);
+    return response.data;
+  },
+  
+  // Admin: Delete a campaign
+  delete: async (id) => {
+    await api.delete(`/campaigns/${id}`);
+  }
+};
+
+// Telemetry API
+export const telemetryApi = {
+  getOverviewMetrics: async () => {
+    const { data } = await api.get('/telemetry/overview');
+    return data;
+  },
+  getCouponMetrics: async () => {
+    const { data } = await api.get('/telemetry/coupons');
+    return data;
+  },
+  getCampaignMetrics: async () => {
+    const { data } = await api.get('/telemetry/campaigns');
+    return data;
+  }
+};
+
 export default api; 

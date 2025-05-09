@@ -10,7 +10,9 @@ import adminRoutes from './routes/adminRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import couponRoutes from './routes/couponRoutes.js';
+import campaignRoutes from './routes/campaignRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
+import telemetryRoutes from './routes/telemetryRoutes.js';
 import errorHandler from './middleware/errorMiddleware.js';
 
 
@@ -45,7 +47,9 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/coupons', couponRoutes);
+app.use('/api/campaigns', campaignRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/telemetry', telemetryRoutes);
 
 // Error handling middleware (must be last)
 app.use(errorHandler);
