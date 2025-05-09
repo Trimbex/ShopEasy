@@ -36,13 +36,6 @@ const ProductsPage = () => {
     }
   }, [categoryParam]);
 
-  // Refetch when minRating changes
-  useEffect(() => {
-    if (mutate) {
-      mutate();
-    }
-  }, [minRating, mutate]);
-
   // Enhanced SWR configuration
   const { data: products, error, mutate, isLoading, isValidating } = useSWR(
     ['products', { minRating, category: selectedCategories[0] }],
@@ -56,10 +49,17 @@ const ProductsPage = () => {
         console.error('Error fetching products:', err);
       },
       onSuccess: (data) => {
-        console.log('Products fetched successfully:', data.length);
+        console.log('Products fetched successfully:', data?.length || 0);
       }
     }
   );
+
+  // Refetch when minRating changes
+  useEffect(() => {
+    if (mutate) {
+      mutate();
+    }
+  }, [minRating, mutate]);
 
   // Filter products based on search, categories, price range, and rating
   const filteredProducts = products?.filter(product => {
@@ -148,7 +148,7 @@ const ProductsPage = () => {
       <div className="flex flex-col md:flex-row gap-8">
         <div className="w-full md:w-64">
           <ProductFilter
-            categories={Array.from(new Set(products.map(p => p.category)))}
+            categories={Array.from(new Set(products?.map(p => p.category) || []))}
             selectedCategories={selectedCategories}
             onCategoryChange={setSelectedCategories}
             priceRange={priceRange}
