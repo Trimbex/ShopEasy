@@ -40,6 +40,34 @@ export default function Home() {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // State for decorative elements to avoid hydration mismatches
+  const [floatingElements, setFloatingElements] = useState([]);
+  const [sparkleElements, setSparkleElements] = useState([]);
+  
+  // Generate random animation elements only on the client side to avoid hydration errors
+  useEffect(() => {
+    // Generate floating bubbles
+    const bubbles = Array(5).fill().map((_, index) => ({
+      id: `bubble-${index}`,
+      x: Math.random() * 100 - 50 + '%',
+      y: Math.random() * 100 + '%',
+      scale: Math.random() * 0.5 + 0.5,
+      duration: Math.random() * 5 + 8,
+      yOffset: Math.random() * -30 - 10 + '%',
+      xOffset: Math.random() * 10 - 5 + '%'
+    }));
+    setFloatingElements(bubbles);
+    
+    // Generate sparkles
+    const sparkles = Array(15).fill().map((_, index) => ({
+      id: `sparkle-${index}`,
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      duration: Math.random() * 2 + 1,
+      delay: Math.random() * 3
+    }));
+    setSparkleElements(sparkles);
+  }, []);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -77,25 +105,25 @@ export default function Home() {
           </svg>
         </div>
         
-        {/* Animated floating elements */}
+        {/* Animated floating elements - client-side only to avoid hydration errors */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {[...Array(5)].map((_, index) => (
+          {floatingElements.map((element) => (
             <motion.div
-              key={index}
+              key={element.id}
               className="absolute w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-white opacity-10"
               initial={{ 
-                x: Math.random() * 100 - 50 + '%', 
-                y: Math.random() * 100 + '%',
-                scale: Math.random() * 0.5 + 0.5
+                x: element.x, 
+                y: element.y,
+                scale: element.scale
               }}
               animate={{ 
-                y: [null, Math.random() * -30 - 10 + '%'],
-                x: [null, Math.random() * 10 - 5 + '%'],
+                y: [null, element.yOffset],
+                x: [null, element.xOffset],
               }}
               transition={{ 
                 repeat: Infinity, 
                 repeatType: 'reverse',
-                duration: Math.random() * 5 + 8,
+                duration: element.duration,
                 ease: "easeInOut"
               }}
             />
@@ -319,15 +347,15 @@ export default function Home() {
         <div className="absolute top-0 left-0 w-full h-full opacity-10" 
              style={{backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")"}}></div>
         
-        {/* Animated sparkle effects */}
+        {/* Animated sparkle effects - client-side only to avoid hydration errors */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {[...Array(15)].map((_, index) => (
+          {sparkleElements.map((sparkle) => (
             <motion.div
-              key={index}
+              key={sparkle.id}
               className="absolute w-1 h-1 sm:w-2 sm:h-2 rounded-full bg-white"
               style={{ 
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`
+                left: sparkle.left,
+                top: sparkle.top
               }}
               animate={{ 
                 opacity: [0, 1, 0],
@@ -335,8 +363,8 @@ export default function Home() {
               }}
               transition={{ 
                 repeat: Infinity, 
-                duration: Math.random() * 2 + 1,
-                delay: Math.random() * 3,
+                duration: sparkle.duration,
+                delay: sparkle.delay,
                 ease: "easeInOut"
               }}
             />

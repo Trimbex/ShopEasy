@@ -10,6 +10,12 @@ const CampaignBanner = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentCampaignIndex, setCurrentCampaignIndex] = useState(0);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Set isMounted to true after the component mounts to avoid hydration issues
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     const fetchActiveCampaigns = async () => {
@@ -44,6 +50,7 @@ const CampaignBanner = () => {
 
   if (loading) return null; // Don't show anything while loading
   if (error || activeCampaigns.length === 0) return null; // Don't show if there's an error or no campaigns
+  if (!isMounted) return <div className="w-full py-4 md:py-5"></div>; // Return placeholder to match dimensions but without animations
 
   const campaign = activeCampaigns[currentCampaignIndex];
 

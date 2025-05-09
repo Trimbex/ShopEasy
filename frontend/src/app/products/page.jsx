@@ -63,16 +63,55 @@ const ProductsPage = () => {
 
   // Filter products based on search, categories, price range, and rating
   const filteredProducts = products?.filter(product => {
-    // Case insensitive search with fuzzy matching (partial word matching)
-    const searchTerms = searchQuery.toLowerCase().split(' ').filter(term => term.length > 0);
-    const matchesSearch = searchQuery === '' || searchTerms.some(term => 
-      product.name.toLowerCase().includes(term) ||
-      product.description.toLowerCase().includes(term) ||
-      product.category.toLowerCase().includes(term) ||
-      (product.tags && product.tags.some(tag => tag.toLowerCase().includes(term)))
-    );
+    // More precise search with less fuzzy matching
+    const searchTerm = searchQuery.toLowerCase().trim();
     
-    // Check if ANY selected category matches (not just the first one)
+    let matchesSearch = true;
+    if (searchTerm) {
+      // For longer search queries (3+ words), require more precise matches
+      const searchTerms = searchTerm.split(/\s+/).filter(term => term.length > 2);
+      
+      // If no valid search terms after filtering, consider it a match
+      if (searchTerms.length === 0) {
+        // Check if the whole search term matches
+        matchesSearch = product.name.toLowerCase().includes(searchTerm) || 
+                        product.description.toLowerCase().includes(searchTerm) ||
+                        product.category.toLowerCase().includes(searchTerm);
+      } else {
+        // Check product name with higher priority (exact product name match)
+        const nameMatch = product.name.toLowerCase().includes(searchTerm);
+        if (nameMatch) {
+          matchesSearch = true;
+        } else {
+          // For multi-word searches, require at least 50% of terms to match
+          const requiredMatches = Math.max(1, Math.ceil(searchTerms.length * 0.5));
+          let matchCount = 0;
+          
+          // Count matches across different fields
+          for (const term of searchTerms) {
+            if (product.name.toLowerCase().includes(term)) {
+              matchCount++;
+            } else if (product.description.toLowerCase().includes(term)) {
+              matchCount++;
+            } else if (product.category.toLowerCase().includes(term)) {
+              matchCount++;
+            } else if (product.tags && product.tags.some(tag => tag.toLowerCase().includes(term))) {
+              matchCount++;
+            }
+            
+            // Early return if we've already met the threshold
+            if (matchCount >= requiredMatches) {
+              matchesSearch = true;
+              break;
+            }
+          }
+          
+          matchesSearch = matchCount >= requiredMatches;
+        }
+      }
+    }
+    
+    // Check if ANY selected category matches
     const matchesCategory = selectedCategories.length === 0 || 
                            selectedCategories.includes(product.category);
     
