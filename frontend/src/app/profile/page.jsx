@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '../../context/AuthContext';
 
 export default function ProfilePage() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, updateProfile, loading: authLoading, error: authError, setError } = useAuth();
   const router = useRouter();
   
   const [activeTab, setActiveTab] = useState('profile');
@@ -17,6 +17,8 @@ export default function ProfilePage() {
     name: '',
     email: '',
     phone: '',
+    currentPassword: '',
+    newPassword: '',
   });
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -32,11 +34,13 @@ export default function ProfilePage() {
   // Load user data and orders
   useEffect(() => {
     if (user) {
-      setProfileForm({
+      setProfileForm((prev) => ({
         name: user.name || '',
         email: user.email || '',
         phone: user.phone || '',
-      });
+        currentPassword: '',
+        newPassword: '',
+      }));
 
       // Comment: This would fetch the user's orders from an API
       // const fetchOrders = async () => {
@@ -94,33 +98,23 @@ export default function ProfilePage() {
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    // Comment: This would update the user's profile via an API
-    // try {
-    //   const response = await fetch('/api/user/profile', {
-    //     method: 'PUT',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //     },
-    //     body: JSON.stringify(profileForm),
-    //   });
-    //   
-    //   if (response.ok) {
-    //     setUpdateSuccess(true);
-    //     setTimeout(() => setUpdateSuccess(false), 3000);
-    //   } else {
-    //     // Handle error
-    //   }
-    // } catch (error) {
-    //   console.error('Error updating profile:', error);
-    // }
-    
-    // Simulate API call
-    setTimeout(() => {
-      setUpdateSuccess(true);
-      setTimeout(() => setUpdateSuccess(false), 3000);
+    setError && setError(null);
+    try {
+      const payload = { name: profileForm.name };
+      if (profileForm.currentPassword && profileForm.newPassword) {
+        payload.currentPassword = profileForm.currentPassword;
+        payload.newPassword = profileForm.newPassword;
+      }
+      const result = await updateProfile(payload);
+      if (result.success) {
+        setUpdateSuccess(true);
+        setProfileForm((prev) => ({ ...prev, currentPassword: '', newPassword: '' }));
+        setTimeout(() => setUpdateSuccess(false), 3000);
+      }
+      // error is handled by context
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
   };
 
   const handleLogout = () => {
@@ -264,37 +258,57 @@ export default function ProfilePage() {
                           id="email"
                           name="email"
                           value={profileForm.email}
-                          onChange={handleProfileChange}
-                          className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                          disabled
+                          className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-gray-100 cursor-not-allowed"
                         />
+                        <p className="text-xs text-gray-400 mt-1">Email cannot be changed</p>
                       </div>
                     </div>
 
                     <div>
-                      <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                        Phone number
+                      <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700">
+                        Change Password
+                        <span className="block text-xs font-normal text-gray-400">Leave blank if you don't want to change your password</span>
                       </label>
                       <div className="mt-1">
                         <input
-                          type="tel"
-                          id="phone"
-                          name="phone"
-                          value={profileForm.phone}
+                          type="password"
+                          id="currentPassword"
+                          name="currentPassword"
+                          value={profileForm.currentPassword}
                           onChange={handleProfileChange}
+                          autoComplete="current-password"
                           className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                          placeholder="Current Password"
+                        />
+                      </div>
+                      <div className="mt-2">
+                        <input
+                          type="password"
+                          id="newPassword"
+                          name="newPassword"
+                          value={profileForm.newPassword}
+                          onChange={handleProfileChange}
+                          autoComplete="new-password"
+                          className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                          placeholder="New Password"
                         />
                       </div>
                     </div>
 
+                    {authError && (
+                      <div className="text-red-600 text-sm">{authError}</div>
+                    )}
+
                     <div className="flex justify-end">
                       <button
                         type="submit"
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || authLoading}
                         className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
-                          isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
+                          isSubmitting || authLoading ? 'opacity-70 cursor-not-allowed' : ''
                         }`}
                       >
-                        {isSubmitting ? 'Saving...' : 'Save Changes'}
+                        {(isSubmitting || authLoading) ? 'Saving...' : 'Save Changes'}
                       </button>
                     </div>
                   </div>
