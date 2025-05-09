@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticate, adminOnly } from '../middleware/authMiddleware.js';
+import { getDashboardStats } from '../controllers/adminController.js';
 
 const router = express.Router();
 
@@ -7,18 +8,7 @@ const router = express.Router();
 router.use(authenticate, adminOnly);
 
 // Admin Dashboard - Get stats
-router.get('/dashboard', (req, res) => {
-  // This is just a placeholder - in a real application we would fetch data from the database
-  res.json({
-    message: 'Admin dashboard data',
-    stats: {
-      totalUsers: 100,
-      totalOrders: 250,
-      totalProducts: 50,
-      recentOrders: 15
-    }
-  });
-});
+router.get('/dashboard', getDashboardStats);
 
 // Simple admin check endpoint
 router.get('/check', (req, res) => {

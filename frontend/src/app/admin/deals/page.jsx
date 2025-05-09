@@ -168,7 +168,38 @@ const AdminDealsPage = () => {
           </div>
         </div>
 
-        {/* Coupon Management Section */}
+        {/* Main Navigation */}
+        <div className="bg-white shadow rounded-lg p-6 mb-8">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div className="border rounded-lg p-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Campaign Management</h3>
+              <p className="text-gray-600 mb-4">
+                Group coupons into campaigns to display in the site's hero section.
+              </p>
+              <Link 
+                href="/admin/campaigns" 
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+              >
+                Manage Campaigns
+              </Link>
+            </div>
+            
+            <div className="border rounded-lg p-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Deal Telemetry</h3>
+              <p className="text-gray-600 mb-4">
+                View usage statistics and performance of your deals.
+              </p>
+              <Link 
+                href="/admin/deals/telemetry" 
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+              >
+                View Analytics
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Coupon List Section */}
         <div className="bg-white shadow rounded-lg p-6 mb-8">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-semibold text-gray-900">Coupon Management</h3>
@@ -388,19 +419,6 @@ const AdminDealsPage = () => {
             </div>
           </div>
         )}
-
-        {/* Campaign Management Section */}
-        <div className="bg-white shadow rounded-lg p-6 flex flex-col items-center justify-center min-h-[200px] mb-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Campaign Management</h3>
-          <p className="text-gray-500 text-center mb-4">Group coupons into campaigns and manage their lifecycle.</p>
-          <span className="inline-block px-3 py-1 text-xs bg-gray-100 text-gray-500 rounded">Coming soon</span>
-        </div>
-        {/* Deal Telemetry Section */}
-        <div className="bg-white shadow rounded-lg p-6 flex flex-col items-center justify-center min-h-[200px]">
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Deal Telemetry</h3>
-          <p className="text-gray-500 text-center mb-4">View usage statistics and performance of your deals.</p>
-          <span className="inline-block px-3 py-1 text-xs bg-gray-100 text-gray-500 rounded">Coming soon</span>
-        </div>
       </div>
     </div>
   );
