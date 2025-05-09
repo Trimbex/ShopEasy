@@ -17,7 +17,8 @@ export const getOrders = async (req, res) => {
           include: {
             product: true
           }
-        }
+        },
+        coupon: true
       },
       orderBy: {
         createdAt: 'desc'
@@ -48,7 +49,8 @@ export const getOrder = async (req, res) => {
           include: {
             product: true
           }
-        }
+        },
+        coupon: true
       }
     });
     
@@ -71,15 +73,39 @@ export const getOrder = async (req, res) => {
 // Create new order from cart
 export const createOrder = async (req, res) => {
   try {
-    const { shippingInfo, paymentInfo, items } = req.body;
+    const { shippingInfo, paymentInfo, items, couponId, total } = req.body;
+    
+    // Validate required fields
+    if (!shippingInfo || !paymentInfo) {
+      return res.status(400).json({ 
+        error: 'Missing required information',
+        message: 'Shipping and payment information are required'
+      });
+    }
+    
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ 
+        error: 'Authentication required',
+        message: 'Please log in to place an order'
+      });
+    }
+    
     const userId = req.user.id;
 
-    console.log('Creating order for user:', userId);
-    console.log('Shipping info:', shippingInfo);
-    console.log('Items:', items);
+    console.log('------- ORDER CREATION -------');
+    console.log('User ID:', userId);
+    console.log('Coupon ID:', couponId);
+    console.log('Request body:', JSON.stringify({
+      itemsCount: items?.length || 0,
+      hasShippingInfo: !!shippingInfo,
+      hasPaymentInfo: !!paymentInfo,
+      couponId: couponId || 'none'
+    }));
 
     let orderItems = [];
-    let total = 0;
+    let subtotal = 0;
+    let finalTotal = 0;
+    let appliedCoupon = null;
 
     // If items are provided directly, use them
     if (items && items.length > 0) {
@@ -100,11 +126,11 @@ export const createOrder = async (req, res) => {
         });
       }
 
-      // Calculate total and prepare order items
+      // Calculate subtotal and prepare order items
       orderItems = items.map((item, index) => {
         const product = products[index];
         const itemTotal = product.price * item.quantity;
-        total += itemTotal;
+        subtotal += itemTotal;
         return {
           productId: item.productId,
           quantity: item.quantity,
@@ -131,10 +157,10 @@ export const createOrder = async (req, res) => {
         });
       }
 
-      // Calculate total and prepare order items from cart
+      // Calculate subtotal and prepare order items from cart
       orderItems = cart.items.map(item => {
         const itemTotal = item.product.price * item.quantity;
-        total += itemTotal;
+        subtotal += itemTotal;
         return {
           productId: item.product.id,
           quantity: item.quantity,
@@ -148,28 +174,126 @@ export const createOrder = async (req, res) => {
       });
     }
 
-    // Create order with items
+    // Apply coupon if provided
+    if (couponId) {
+      appliedCoupon = await prisma.coupon.findUnique({
+        where: { id: couponId }
+      });
+
+      if (!appliedCoupon) {
+        return res.status(400).json({
+          error: 'Invalid coupon',
+          message: 'The provided coupon does not exist'
+        });
+      }
+
+      // Validate coupon
+      if (!appliedCoupon.isRunning) {
+        return res.status(400).json({
+          error: 'Inactive coupon',
+          message: 'This coupon is not currently active'
+        });
+      }
+
+      const now = new Date();
+      if (now < appliedCoupon.issuedAt) {
+        return res.status(400).json({
+          error: 'Coupon not yet valid',
+          message: 'This coupon is not yet valid'
+        });
+      }
+
+      if (now > appliedCoupon.expiresAt) {
+        return res.status(400).json({
+          error: 'Expired coupon',
+          message: 'This coupon has expired'
+        });
+      }
+
+      if (subtotal < Number(appliedCoupon.minPrice)) {
+        return res.status(400).json({
+          error: 'Order total too low',
+          message: `Order total must be at least $${appliedCoupon.minPrice}`
+        });
+      }
+
+      // Check usage limits
+      const usageCount = await prisma.order.count({
+        where: { couponId }
+      });
+
+      if (appliedCoupon.maxUsesTotal && usageCount >= appliedCoupon.maxUsesTotal) {
+        return res.status(400).json({
+          error: 'Usage limit reached',
+          message: 'This coupon has reached its maximum usage limit'
+        });
+      }
+
+      const userUsageCount = await prisma.order.count({
+        where: {
+          couponId,
+          userId
+        }
+      });
+
+      if (appliedCoupon.maxUsesPerUser && userUsageCount >= appliedCoupon.maxUsesPerUser) {
+        return res.status(400).json({
+          error: 'User limit reached',
+          message: 'You have reached the maximum usage limit for this coupon'
+        });
+      }
+
+      // Calculate discount
+      const discount = (subtotal * appliedCoupon.percentDiscount) / 100;
+      finalTotal = subtotal - discount;
+    } else {
+      finalTotal = subtotal;
+    }
+
+    // Add shipping and tax
+    const shippingCost = subtotal > 50 ? 0 : 5.99;
+    const tax = finalTotal * 0.08;
+    finalTotal += shippingCost + tax;
+
+    // Create the order
+    console.log('Creating order with coupon ID:', couponId);
+    
+    // Validate coupon ID if provided
+    if (couponId) {
+      const couponExists = await prisma.coupon.findUnique({
+        where: { id: couponId }
+      });
+      
+      if (!couponExists) {
+        console.error('Coupon not found with ID:', couponId);
+      } else {
+        console.log('Found coupon:', couponExists.alias);
+      }
+    }
+    
     const order = await prisma.order.create({
       data: {
         userId,
-        total,
-        status: 'PENDING',
-        shippingInfo,
-        paymentInfo,
         items: {
           create: orderItems
-        }
+        },
+        total: finalTotal,
+        shippingInfo,
+        paymentInfo,
+        couponId: couponId
       },
       include: {
         items: {
           include: {
             product: true
           }
-        }
+        },
+        coupon: true
       }
     });
-
-    console.log('Order created:', order.id);
+    
+    console.log('Order created with coupon ID:', order.couponId);
+    
     res.status(201).json(order);
   } catch (error) {
     console.error('Error creating order:', error);
@@ -199,7 +323,8 @@ export const updateOrderStatus = async (req, res) => {
           include: {
             product: true
           }
-        }
+        },
+        coupon: true
       }
     });
     
@@ -222,7 +347,8 @@ export const getUserOrders = async (req, res) => {
           include: {
             product: true
           }
-        }
+        },
+        coupon: true
       },
       orderBy: {
         createdAt: 'desc'

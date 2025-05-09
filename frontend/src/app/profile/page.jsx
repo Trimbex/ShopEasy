@@ -66,6 +66,7 @@ export default function ProfilePage() {
           setProfileError(null);
         } catch (error) {
           console.error('Error fetching orders:', error);
+
           const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch orders';
           setProfileError(errorMessage);
         } finally {
@@ -198,71 +199,88 @@ export default function ProfilePage() {
 
     return (
       <div className="space-y-4">
-        {orders.map((order) => (
-          <div key={order.id} className={`bg-white shadow-sm rounded-lg p-6 ${
-            order.status === 'CANCELED' ? 'opacity-60' : ''
-          }`}>
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className={`text-lg font-medium ${
-                  order.status === 'CANCELED' ? 'text-gray-500 line-through' : 'text-gray-900'
-                }`}>
-                  Order #{order.id}
-                </h3>
-                <p className={`mt-1 text-sm ${
-                  order.status === 'CANCELED' ? 'text-gray-400' : 'text-gray-500'
-                }`}>
-                  {new Date(order.createdAt).toLocaleDateString()}
-                </p>
+        {orders.map((order) => {
+          const subtotal = order.items.reduce((total, item) => total + (item.price * item.quantity), 0);
+          const discount = order.coupon ? (subtotal * order.coupon.percentDiscount) / 100 : 0;
+          const shippingEstimate = subtotal > 50 ? 0 : 5.99;
+          const taxEstimate = (subtotal - discount) * 0.08;
+          const total = order.total;
+
+          return (
+            <div key={order.id} className={`bg-white shadow-sm rounded-lg p-6 ${
+              order.status === 'CANCELED' ? 'opacity-60' : ''
+            }`}>
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className={`text-lg font-medium ${
+                    order.status === 'CANCELED' ? 'text-gray-500 line-through' : 'text-gray-900'
+                  }`}>
+                    Order #{order.id}
+                  </h3>
+                  <p className={`mt-1 text-sm ${
+                    order.status === 'CANCELED' ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
+                    {new Date(order.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    order.status === 'DELIVERED' ? 'bg-green-100 text-green-800' :
+                    order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-800' :
+                    order.status === 'PROCESSING' ? 'bg-yellow-100 text-yellow-800' :
+                    order.status === 'CANCELED' ? 'bg-gray-100 text-gray-500' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {order.status}
+                  </span>
+                  {order.status === 'PENDING' && (
+                    <button
+                      onClick={() => handleCancelOrder(order.id)}
+                      className="text-sm font-medium text-red-600 hover:text-red-500 focus:outline-none"
+                    >
+                      Cancel Order
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center space-x-4">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  order.status === 'DELIVERED' ? 'bg-green-100 text-green-800' :
-                  order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-800' :
-                  order.status === 'PROCESSING' ? 'bg-yellow-100 text-yellow-800' :
-                  order.status === 'CANCELED' ? 'bg-gray-100 text-gray-500' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
-                  {order.status}
-                </span>
-                {order.status === 'PENDING' && (
-                  <button
-                    onClick={() => handleCancelOrder(order.id)}
-                    className="text-sm font-medium text-red-600 hover:text-red-500 focus:outline-none"
-                  >
-                    Cancel Order
-                  </button>
-                )}
+              <div className="mt-4">
+                <div className="flex justify-between text-sm">
+                  <span className={`${
+                    order.status === 'CANCELED' ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
+                    Total
+                  </span>
+                  <span className={`font-medium ${
+                    order.status === 'CANCELED' ? 'text-gray-500 line-through' : 'text-gray-900'
+                  }`}>
+                    {order.coupon ? (
+                      <div className="flex flex-col items-end">
+                        <span className="text-xs text-gray-500">
+                          {order.coupon.percentDiscount}% off with {order.coupon.alias}
+                        </span>
+                        <span>${Number(order.total).toFixed(2)}</span>
+                      </div>
+                    ) : (
+                      `$${Number(order.total).toFixed(2)}`
+                    )}
+                  </span>
+                </div>
+              </div>
+              <div className="mt-4">
+                <Link 
+                  href={`/order-confirmation/${order.id}`} 
+                  className={`text-sm font-medium ${
+                    order.status === 'CANCELED' 
+                      ? 'text-gray-400 hover:text-gray-500' 
+                      : 'text-indigo-600 hover:text-indigo-500'
+                  }`}
+                >
+                  View details <span aria-hidden="true">&rarr;</span>
+                </Link>
               </div>
             </div>
-            <div className="mt-4">
-              <div className="flex justify-between text-sm">
-                <span className={`${
-                  order.status === 'CANCELED' ? 'text-gray-400' : 'text-gray-500'
-                }`}>
-                  Total
-                </span>
-                <span className={`font-medium ${
-                  order.status === 'CANCELED' ? 'text-gray-500 line-through' : 'text-gray-900'
-                }`}>
-                  ${Number(order.total).toFixed(2)}
-                </span>
-              </div>
-            </div>
-            <div className="mt-4">
-              <Link 
-                href={`/order-confirmation/${order.id}`} 
-                className={`text-sm font-medium ${
-                  order.status === 'CANCELED' 
-                    ? 'text-gray-400 hover:text-gray-500' 
-                    : 'text-indigo-600 hover:text-indigo-500'
-                }`}
-              >
-                View details <span aria-hidden="true">&rarr;</span>
-              </Link>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };
