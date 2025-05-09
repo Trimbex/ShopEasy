@@ -1,18 +1,83 @@
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
+// Define a constant for low stock threshold
+const LOW_STOCK_THRESHOLD = 5;
+
 // Get all products
 export const getProducts = async (req, res) => {
   try {
+    // Only select fields that exist in the database
     const products = await prisma.product.findMany({
-      include: {
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        price: true,
+        imageUrl: true,
+        stock: true,
+        category: true,
+        createdAt: true,
+        updatedAt: true,
         reviews: true
       }
     });
-    res.json(products);
+
+    // Add stock information to response
+    const productsWithStockInfo = products.map(product => ({
+      ...product,
+      price: Number(product.price),
+      stockStatus: {
+        isLowStock: product.stock <= LOW_STOCK_THRESHOLD,
+        currentStock: product.stock,
+        threshold: LOW_STOCK_THRESHOLD
+      }
+    }));
+
+    res.json(productsWithStockInfo);
   } catch (error) {
     console.error('Error fetching products:', error);
     res.status(500).json({ error: 'Error fetching products' });
+  }
+};
+
+// Get low stock products
+export const getLowStockProducts = async (req, res) => {
+  try {
+    const products = await prisma.product.findMany({
+      where: {
+        stock: {
+          lte: LOW_STOCK_THRESHOLD
+        }
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        price: true,
+        imageUrl: true,
+        stock: true,
+        category: true,
+        createdAt: true,
+        updatedAt: true,
+        reviews: true
+      }
+    });
+
+    const formattedProducts = products.map(product => ({
+      ...product,
+      price: Number(product.price),
+      stockStatus: {
+        isLowStock: true,
+        currentStock: product.stock,
+        threshold: LOW_STOCK_THRESHOLD
+      }
+    }));
+
+    res.json(formattedProducts);
+  } catch (error) {
+    console.error('Error fetching low stock products:', error);
+    res.status(500).json({ error: 'Error fetching low stock products' });
   }
 };
 
@@ -31,7 +96,16 @@ export const getProduct = async (req, res) => {
 
     const product = await prisma.product.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        price: true,
+        imageUrl: true,
+        stock: true,
+        category: true,
+        createdAt: true,
+        updatedAt: true,
         reviews: {
           include: {
             user: {
@@ -65,6 +139,11 @@ export const getProduct = async (req, res) => {
       ...product,
       price: Number(product.price),
       averageRating: Number(averageRating.toFixed(1)),
+      stockStatus: {
+        isLowStock: product.stock <= LOW_STOCK_THRESHOLD,
+        currentStock: product.stock,
+        threshold: LOW_STOCK_THRESHOLD
+      },
       reviews: product.reviews.map(review => ({
         ...review,
         user: {
@@ -106,7 +185,15 @@ export const createProduct = async (req, res) => {
       }
     });
     
-    res.status(201).json(product);
+    res.status(201).json({
+      ...product,
+      price: Number(product.price),
+      stockStatus: {
+        isLowStock: product.stock <= LOW_STOCK_THRESHOLD,
+        currentStock: product.stock,
+        threshold: LOW_STOCK_THRESHOLD
+      }
+    });
   } catch (error) {
     console.error('Error creating product:', error);
     res.status(500).json({ error: 'Error creating product' });
@@ -137,7 +224,15 @@ export const updateProduct = async (req, res) => {
       }
     });
     
-    res.json(product);
+    res.json({
+      ...product,
+      price: Number(product.price),
+      stockStatus: {
+        isLowStock: product.stock <= LOW_STOCK_THRESHOLD,
+        currentStock: product.stock,
+        threshold: LOW_STOCK_THRESHOLD
+      }
+    });
   } catch (error) {
     console.error('Error updating product:', error);
     res.status(500).json({ error: 'Error updating product' });
