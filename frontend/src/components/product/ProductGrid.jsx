@@ -3,9 +3,11 @@
 import { useState } from 'react';
 import ProductCard from './ProductCard';
 import { productsApi } from '../../services/api';
+import SignInModal from '../auth/SignInModal';
 
 const ProductGrid = ({ products, onProductUpdate, isValidating }) => {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showSignInModal, setShowSignInModal] = useState(false);
 
   const handleDelete = async (productId) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
@@ -32,6 +34,7 @@ const ProductGrid = ({ products, onProductUpdate, isValidating }) => {
 
   return (
     <div className="relative">
+      <SignInModal isOpen={showSignInModal} onClose={() => setShowSignInModal(false)} />
       {isValidating && (
         <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center z-10">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -44,6 +47,7 @@ const ProductGrid = ({ products, onProductUpdate, isValidating }) => {
             product={product}
             onDelete={() => handleDelete(product.id)}
             isDeleting={isDeleting}
+            onShowSignInModal={() => setShowSignInModal(true)}
           />
         ))}
       </div>

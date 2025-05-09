@@ -9,8 +9,11 @@ export const authenticate = (req, res, next) => {
     // Get the authorization header
     const authHeader = req.headers.authorization;
     
+    console.log('Auth Header:', authHeader);
+    
     // Check if the header exists and starts with Bearer
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('Invalid auth header format');
       return res.status(401).json({ 
         message: 'Authentication required. No token provided or invalid format.'
       });
@@ -18,9 +21,16 @@ export const authenticate = (req, res, next) => {
     
     // Extract the token
     const token = authHeader.split(' ')[1];
+    console.log('Token extracted:', token ? `${token.substring(0, 10)}...` : 'null');
+    
+    if (!token) {
+      console.log('Token is empty after extraction');
+      return res.status(401).json({ message: 'Invalid token format' });
+    }
     
     // Verify the token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Token verified successfully, user ID:', decoded.id);
     
     // Attach the user data to the request
     req.user = decoded;

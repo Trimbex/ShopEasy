@@ -7,14 +7,14 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
 export default function ProfilePage() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, updateProfile, loading: authLoading, error: authError, setError } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   
   const [activeTab, setActiveTab] = useState('profile');
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [profileError, setProfileError] = useState(null);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [orderToCancel, setOrderToCancel] = useState(null);
   const [isCanceling, setIsCanceling] = useState(false);
@@ -23,6 +23,8 @@ export default function ProfilePage() {
     name: '',
     email: '',
     phone: '',
+    currentPassword: '',
+    newPassword: '',
   });
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,11 +48,13 @@ export default function ProfilePage() {
   // Load user data and orders
   useEffect(() => {
     if (user) {
-      setProfileForm({
+      setProfileForm((prev) => ({
         name: user.name || '',
         email: user.email || '',
         phone: user.phone || '',
-      });
+        currentPassword: '',
+        newPassword: '',
+      }));
 
       const fetchOrders = async () => {
         try {
@@ -59,11 +63,12 @@ export default function ProfilePage() {
           
           const { data } = await api.get('/orders/myorders');
           setOrders(data);
-          setError(null);
+          setProfileError(null);
         } catch (error) {
           console.error('Error fetching orders:', error);
-          const errorMessage = error.response?.data?.error || 'Failed to load orders';
-          setError(errorMessage);
+
+          const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch orders';
+          setProfileError(errorMessage);
         } finally {
           setIsLoading(false);
         }
@@ -84,33 +89,23 @@ export default function ProfilePage() {
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    // Comment: This would update the user's profile via an API
-    // try {
-    //   const response = await fetch('/api/user/profile', {
-    //     method: 'PUT',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //     },
-    //     body: JSON.stringify(profileForm),
-    //   });
-    //   
-    //   if (response.ok) {
-    //     setUpdateSuccess(true);
-    //     setTimeout(() => setUpdateSuccess(false), 3000);
-    //   } else {
-    //     // Handle error
-    //   }
-    // } catch (error) {
-    //   console.error('Error updating profile:', error);
-    // }
-    
-    // Simulate API call
-    setTimeout(() => {
-      setUpdateSuccess(true);
-      setTimeout(() => setUpdateSuccess(false), 3000);
+    setProfileError(null);
+    try {
+      const payload = { name: profileForm.name };
+      if (profileForm.currentPassword && profileForm.newPassword) {
+        payload.currentPassword = profileForm.currentPassword;
+        payload.newPassword = profileForm.newPassword;
+      }
+      const result = await updateProfile(payload);
+      if (result.success) {
+        setUpdateSuccess(true);
+        setProfileForm((prev) => ({ ...prev, currentPassword: '', newPassword: '' }));
+        setTimeout(() => setUpdateSuccess(false), 3000);
+      }
+      // error is handled by context
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
   };
 
   const handleLogout = () => {
@@ -143,7 +138,7 @@ export default function ProfilePage() {
     } catch (error) {
       console.error('Error canceling order:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Failed to cancel order';
-      setError(errorMessage);
+      setProfileError(errorMessage);
     } finally {
       setIsCanceling(false);
     }
@@ -167,7 +162,7 @@ export default function ProfilePage() {
       );
     }
 
-    if (error) {
+    if (profileError) {
       return (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <div className="flex">
@@ -178,7 +173,7 @@ export default function ProfilePage() {
             </div>
             <div className="ml-3">
               <h3 className="text-sm font-medium text-red-800">Error loading orders</h3>
-              <p className="mt-1 text-sm text-red-700">{error}</p>
+              <p className="mt-1 text-sm text-red-700">{profileError}</p>
             </div>
           </div>
         </div>
@@ -422,37 +417,57 @@ export default function ProfilePage() {
                           id="email"
                           name="email"
                           value={profileForm.email}
-                          onChange={handleProfileChange}
-                          className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                          disabled
+                          className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-gray-100 cursor-not-allowed"
                         />
+                        <p className="text-xs text-gray-400 mt-1">Email cannot be changed</p>
                       </div>
                     </div>
 
                     <div>
-                      <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                        Phone number
+                      <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700">
+                        Change Password
+                        <span className="block text-xs font-normal text-gray-400">Leave blank if you don't want to change your password</span>
                       </label>
                       <div className="mt-1">
                         <input
-                          type="tel"
-                          id="phone"
-                          name="phone"
-                          value={profileForm.phone}
+                          type="password"
+                          id="currentPassword"
+                          name="currentPassword"
+                          value={profileForm.currentPassword}
                           onChange={handleProfileChange}
+                          autoComplete="current-password"
                           className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                          placeholder="Current Password"
+                        />
+                      </div>
+                      <div className="mt-2">
+                        <input
+                          type="password"
+                          id="newPassword"
+                          name="newPassword"
+                          value={profileForm.newPassword}
+                          onChange={handleProfileChange}
+                          autoComplete="new-password"
+                          className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                          placeholder="New Password"
                         />
                       </div>
                     </div>
 
+                    {authError && (
+                      <div className="text-red-600 text-sm">{authError}</div>
+                    )}
+
                     <div className="flex justify-end">
                       <button
                         type="submit"
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || authLoading}
                         className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
-                          isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
+                          isSubmitting || authLoading ? 'opacity-70 cursor-not-allowed' : ''
                         }`}
                       >
-                        {isSubmitting ? 'Saving...' : 'Save Changes'}
+                        {(isSubmitting || authLoading) ? 'Saving...' : 'Save Changes'}
                       </button>
                     </div>
                   </div>

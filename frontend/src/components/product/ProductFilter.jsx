@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import RatingFilter from '../filter/RatingFilter';
 
 const ProductFilter = ({ 
   categories, 
@@ -8,7 +9,9 @@ const ProductFilter = ({
   selectedCategories = [], 
   selectedPriceRange = [0, 1000],
   onCategoryChange,
-  onPriceRangeChange
+  onPriceRangeChange,
+  selectedRating = 0,
+  onRatingChange
 }) => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
@@ -60,8 +63,13 @@ const ProductFilter = ({
           </div>
         </div>
 
+        {/* Rating Filter */}
+        <div className="mb-6 border-t pt-4">
+          <RatingFilter onFilterChange={onRatingChange} />
+        </div>
+
         {/* Price Range */}
-        <div className="mb-6">
+        <div className="mb-6 border-t pt-4">
           <h3 className="text-sm font-medium text-gray-900 mb-2">Price Range</h3>
           <div className="space-y-4">
             <div className="flex justify-between">
@@ -94,6 +102,7 @@ const ProductFilter = ({
           onClick={() => {
             onCategoryChange([]);
             onPriceRangeChange([priceRange[0], priceRange[1]]);
+            onRatingChange(0);
           }}
           className="w-full bg-gray-100 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-200 text-sm font-medium"
         >
