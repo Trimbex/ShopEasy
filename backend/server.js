@@ -9,6 +9,7 @@ import authRoutes from './routes/authRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
+import errorHandler from './middleware/errorMiddleware.js';
 
 // Configure environment variables
 dotenv.config();
@@ -30,11 +31,19 @@ app.get('/api', (req, res) => {
   res.json({ message: 'Welcome to the API!' });
 });
 
+// Test error route
+app.get('/api/error-test', (req, res, next) => {
+  throw new Error('Test Error');
+});
+
 // Register routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
+
+// Error handling middleware (must be last)
+app.use(errorHandler);
 
 // Start the server
 app.listen(PORT, () => {

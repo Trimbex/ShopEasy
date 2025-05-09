@@ -139,3 +139,77 @@ export const getCurrentUser = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 }; 
+
+
+// Update User Profile
+export const updateProfile = async (req, res) => {
+  try {
+    // User ID is available from the authenticated request
+    const userId = req.user.id;
+    const { name, currentPassword, newPassword } = req.body;
+
+    // Fetch the user from the database to get their current hashed password
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    // If user not found (shouldn't happen with authenticate middleware)
+    if (!user) {
+       // This might indicate a token issue, though middleware should handle it
+       return res.status(404).json({ message: 'User not found' });
+    }
+
+    const updateData = {};
+
+    // Handle name update
+    if (name !== undefined && name !== null && name.trim() !== '') {
+      updateData.name = name.trim();
+    } else if (name !== undefined && name.trim() === '') {
+        // Allow clearing the name field
+        updateData.name = null;
+    }
+
+
+    // Handle password update
+    if (currentPassword || newPassword) {
+      // Both fields must be provided for a password change
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: 'Both currentPassword and newPassword are required to change password' });
+      }
+
+      // Verify the current password
+      const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ message: 'Invalid current password' });
+      }
+
+      // Hash the new password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(newPassword, salt);
+      updateData.password = hashedPassword;
+    }
+
+    // If no fields were provided for update
+    if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: 'No valid fields provided for update' });
+    }
+
+    // Perform the update
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      // Select fields to return, EXCLUDE PASSWORD
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        isAdmin: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ message: 'Server error during profile update' });
+  }
+};

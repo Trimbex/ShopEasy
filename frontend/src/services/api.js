@@ -41,4 +41,17 @@ export const productsApi = {
   },
 };
 
+// User API
+export const userApi = {
+  // Update user profile (name and/or password)
+  updateProfile: async (data, token) => {
+    const response = await api.put('/auth/me', data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  },
+};
+
 export default api; 

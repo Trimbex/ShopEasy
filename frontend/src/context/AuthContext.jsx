@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { userApi } from '../services/api';
 
 const API_URL = 'http://localhost:5000/api';
 
@@ -128,6 +129,24 @@ export const AuthProvider = ({ children }) => {
   // Check if user is admin
   const isAdmin = user?.isAdmin === true;
 
+  // Update Profile
+  const updateProfile = async (profileData) => {
+    setError(null);
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
+      const updatedUser = await userApi.updateProfile(profileData, token);
+      setUser((prev) => ({ ...prev, ...updatedUser }));
+      setLoading(false);
+      return { success: true, user: updatedUser };
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Profile update failed');
+      setLoading(false);
+      return { success: false, error: err.response?.data?.message || err.message };
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -137,7 +156,8 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     isAuthenticated: !!user,
-    isAdmin
+    isAdmin,
+    updateProfile,
   };
 
   return (
