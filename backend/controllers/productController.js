@@ -20,21 +20,67 @@ export const getProducts = async (req, res) => {
 export const getProduct = async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Input validation
+    if (!id || typeof id !== 'string') {
+      return res.status(400).json({ 
+        error: 'Invalid product ID',
+        message: 'Product ID must be a valid string'
+      });
+    }
+
     const product = await prisma.product.findUnique({
       where: { id },
       include: {
-        reviews: true
+        reviews: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          },
+          orderBy: {
+            createdAt: 'desc'
+          }
+        }
       }
     });
     
     if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
+      return res.status(404).json({ 
+        error: 'Product not found',
+        message: `No product found with ID: ${id}`
+      });
     }
+
+    // Calculate average rating
+    const averageRating = product.reviews.length > 0
+      ? product.reviews.reduce((acc, review) => acc + review.rating, 0) / product.reviews.length
+      : 0;
+
+    // Format the response
+    const formattedProduct = {
+      ...product,
+      price: Number(product.price),
+      averageRating: Number(averageRating.toFixed(1)),
+      reviews: product.reviews.map(review => ({
+        ...review,
+        user: {
+          id: review.user.id,
+          name: review.user.name
+        }
+      }))
+    };
     
-    res.json(product);
+    res.json(formattedProduct);
   } catch (error) {
     console.error('Error fetching product:', error);
-    res.status(500).json({ error: 'Error fetching product' });
+    res.status(500).json({ 
+      error: 'Server error',
+      message: 'An error occurred while fetching the product'
+    });
   }
 };
 

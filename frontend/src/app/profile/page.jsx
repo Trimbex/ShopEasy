@@ -14,7 +14,7 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState('profile');
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [profileError, setProfileError] = useState(null);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [orderToCancel, setOrderToCancel] = useState(null);
   const [isCanceling, setIsCanceling] = useState(false);
@@ -63,11 +63,11 @@ export default function ProfilePage() {
           
           const { data } = await api.get('/orders/myorders');
           setOrders(data);
-          setError(null);
+          setProfileError(null);
         } catch (error) {
           console.error('Error fetching orders:', error);
           const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch orders';
-          setError(errorMessage);
+          setProfileError(errorMessage);
         } finally {
           setIsLoading(false);
         }
@@ -88,7 +88,7 @@ export default function ProfilePage() {
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setError && setError(null);
+    setProfileError(null);
     try {
       const payload = { name: profileForm.name };
       if (profileForm.currentPassword && profileForm.newPassword) {
@@ -137,7 +137,7 @@ export default function ProfilePage() {
     } catch (error) {
       console.error('Error canceling order:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Failed to cancel order';
-      setError(errorMessage);
+      setProfileError(errorMessage);
     } finally {
       setIsCanceling(false);
     }
@@ -161,7 +161,7 @@ export default function ProfilePage() {
       );
     }
 
-    if (error) {
+    if (profileError) {
       return (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <div className="flex">
@@ -172,7 +172,7 @@ export default function ProfilePage() {
             </div>
             <div className="ml-3">
               <h3 className="text-sm font-medium text-red-800">Error loading orders</h3>
-              <p className="mt-1 text-sm text-red-700">{error}</p>
+              <p className="mt-1 text-sm text-red-700">{profileError}</p>
             </div>
           </div>
         </div>
