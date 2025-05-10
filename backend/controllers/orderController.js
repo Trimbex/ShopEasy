@@ -126,6 +126,28 @@ export const createOrder = async (req, res) => {
         });
       }
 
+      // Validate stock availability
+      const insufficientStockItems = [];
+      products.forEach((product, index) => {
+        const item = items[index];
+        if (product.stock < item.quantity) {
+          insufficientStockItems.push({
+            productId: item.productId,
+            productName: product.name,
+            requestedQuantity: item.quantity,
+            availableStock: product.stock
+          });
+        }
+      });
+
+      if (insufficientStockItems.length > 0) {
+        return res.status(400).json({
+          error: 'Insufficient stock',
+          message: 'One or more items have insufficient stock',
+          items: insufficientStockItems
+        });
+      }
+
       // Calculate subtotal and prepare order items
       orderItems = items.map((item, index) => {
         const product = products[index];
@@ -154,6 +176,27 @@ export const createOrder = async (req, res) => {
         return res.status(400).json({ 
           error: 'No items provided',
           message: 'Please provide items or add items to your cart before checking out'
+        });
+      }
+
+      // Validate stock availability from cart items
+      const insufficientStockItems = [];
+      cart.items.forEach(item => {
+        if (item.product.stock < item.quantity) {
+          insufficientStockItems.push({
+            productId: item.product.id,
+            productName: item.product.name,
+            requestedQuantity: item.quantity,
+            availableStock: item.product.stock
+          });
+        }
+      });
+
+      if (insufficientStockItems.length > 0) {
+        return res.status(400).json({
+          error: 'Insufficient stock',
+          message: 'One or more items in your cart have insufficient stock',
+          items: insufficientStockItems
         });
       }
 
@@ -270,31 +313,49 @@ export const createOrder = async (req, res) => {
         console.log('Found coupon:', couponExists.alias);
       }
     }
-    
-    const order = await prisma.order.create({
-      data: {
-        userId,
-        items: {
-          create: orderItems
+
+    // Use a transaction to ensure order creation and stock updates happen atomically
+    const result = await prisma.$transaction(async (tx) => {
+      // Create the order
+      const order = await tx.order.create({
+        data: {
+          userId,
+          items: {
+            create: orderItems
+          },
+          total: finalTotal,
+          shippingInfo,
+          paymentInfo,
+          couponId: couponId
         },
-        total: finalTotal,
-        shippingInfo,
-        paymentInfo,
-        couponId: couponId
-      },
-      include: {
-        items: {
-          include: {
-            product: true
+        include: {
+          items: true,
+          coupon: true
+        }
+      });
+
+      // Update product stock levels
+      for (const item of orderItems) {
+        // Get current stock
+        const product = await tx.product.findUnique({
+          where: { id: item.productId }
+        });
+
+        // Decrement stock
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { 
+            stock: product.stock - item.quantity
           }
-        },
-        coupon: true
+        });
       }
+
+      return order;
     });
     
-    console.log('Order created with coupon ID:', order.couponId);
+    console.log('Order created with coupon ID:', result.couponId);
     
-    res.status(201).json(order);
+    res.status(201).json(result);
   } catch (error) {
     console.error('Error creating order:', error);
     res.status(500).json({ 
@@ -315,20 +376,75 @@ export const updateOrderStatus = async (req, res) => {
       return res.status(400).json({ error: 'Invalid order status' });
     }
 
-    const order = await prisma.order.update({
+    // Get the current order to check if it's being canceled
+    const currentOrder = await prisma.order.findUnique({
       where: { id },
-      data: { status },
       include: {
-        items: {
-          include: {
-            product: true
-          }
-        },
-        coupon: true
+        items: true
       }
     });
-    
-    res.json(order);
+
+    if (!currentOrder) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // If the order is being canceled and was not already canceled, restore stock
+    const isBeingCanceled = status === 'CANCELED' && currentOrder.status !== 'CANCELED';
+
+    if (isBeingCanceled) {
+      // Use a transaction to ensure all operations succeed or fail together
+      const result = await prisma.$transaction(async (tx) => {
+        // Update the order status
+        const updatedOrder = await tx.order.update({
+          where: { id },
+          data: { status },
+          include: {
+            items: {
+              include: {
+                product: true
+              }
+            },
+            coupon: true
+          }
+        });
+
+        // Restore stock for each item
+        for (const item of currentOrder.items) {
+          // Get current stock
+          const product = await tx.product.findUnique({
+            where: { id: item.productId }
+          });
+
+          // Increment stock back to original value
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { 
+              stock: product.stock + item.quantity
+            }
+          });
+        }
+
+        return updatedOrder;
+      });
+
+      return res.json(result);
+    } else {
+      // If not canceling, just update the status normally
+      const order = await prisma.order.update({
+        where: { id },
+        data: { status },
+        include: {
+          items: {
+            include: {
+              product: true
+            }
+          },
+          coupon: true
+        }
+      });
+      
+      return res.json(order);
+    }
   } catch (error) {
     console.error('Error updating order:', error);
     res.status(500).json({ error: 'Error updating order' });
@@ -370,7 +486,10 @@ export const cancelOrder = async (req, res) => {
 
     // Find the order
     const order = await prisma.order.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        items: true
+      }
     });
 
     if (!order) {
@@ -390,17 +509,38 @@ export const cancelOrder = async (req, res) => {
       });
     }
 
-    // Update the order status to CANCELED
-    const updatedOrder = await prisma.order.update({
-      where: { id },
-      data: { status: 'CANCELED' },
-      include: {
-        items: {
-          include: {
-            product: true
+    // Use a transaction to ensure order cancellation and stock updates happen atomically
+    const updatedOrder = await prisma.$transaction(async (tx) => {
+      // Update the order status to CANCELED
+      const canceledOrder = await tx.order.update({
+        where: { id },
+        data: { status: 'CANCELED' },
+        include: {
+          items: {
+            include: {
+              product: true
+            }
           }
         }
+      });
+
+      // Restore stock for each item
+      for (const item of order.items) {
+        // Get current stock
+        const product = await tx.product.findUnique({
+          where: { id: item.productId }
+        });
+
+        // Increment stock back to original value
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { 
+            stock: product.stock + item.quantity
+          }
+        });
       }
+
+      return canceledOrder;
     });
 
     res.json(updatedOrder);

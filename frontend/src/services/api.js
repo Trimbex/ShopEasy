@@ -16,7 +16,7 @@ api.interceptors.request.use(
     }
     
     // Special logging for coupon-related requests
-    if (config.url?.includes('/coupons')) {
+    if (config.url?.includes('/coupons') && process.env.NODE_ENV === 'development') {
       console.log('[API REQUEST] Coupon request:', {
         url: config.url,
         method: config.method,
@@ -25,7 +25,7 @@ api.interceptors.request.use(
     }
     
     // Special logging for order-related requests
-    if (config.url?.includes('/orders')) {
+    if (config.url?.includes('/orders') && process.env.NODE_ENV === 'development') {
       console.log('[API REQUEST] Order request:', {
         url: config.url,
         method: config.method,
@@ -37,7 +37,10 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error('[API REQUEST ERROR]', error);
+    // Silent logging only in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[API REQUEST ERROR]', error);
+    }
     return Promise.reject(error);
   }
 );
@@ -46,7 +49,7 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => {
     // Special logging for coupon-related responses
-    if (response.config.url?.includes('/coupons')) {
+    if (response.config.url?.includes('/coupons') && process.env.NODE_ENV === 'development') {
       console.log('[API RESPONSE] Coupon response:', {
         url: response.config.url,
         status: response.status,
@@ -56,7 +59,7 @@ api.interceptors.response.use(
     }
     
     // Special logging for order-related responses
-    if (response.config.url?.includes('/orders')) {
+    if (response.config.url?.includes('/orders') && process.env.NODE_ENV === 'development') {
       console.log('[API RESPONSE] Order response:', {
         url: response.config.url,
         status: response.status,
@@ -73,31 +76,39 @@ api.interceptors.response.use(
       window.location.href = '/login';
     }
     
-    // Extended error logging for order-related errors
+    // Extended error logging for order-related errors, but only in development
     if (error.config?.url?.includes('/orders')) {
-      console.error('[ORDER API ERROR]', {
-        request: {
-          url: error.config.url,
-          method: error.config.method,
-          data: error.config.data,
-          headers: error.config.headers
-        },
-        response: error.response ? {
-          status: error.response.status,
-          data: error.response.data,
-          headers: error.response.headers
-        } : 'No response',
-        message: error.message
-      });
+      // Silently log the error without console.error
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[ORDER API DEBUG]', {
+          request: {
+            url: error.config?.url,
+            method: error.config?.method,
+            data: error.config?.data,
+            headers: error.config?.headers
+          },
+          response: error.response ? {
+            status: error.response.status,
+            data: error.response.data,
+            headers: error.response.headers
+          } : 'No response',
+          message: error.message || 'Unknown error'
+        });
+      }
     } else {
-      // Log the full error for debugging
-      console.error('API Error:', {
-        status: error.response?.status,
-        data: error.response?.data,
-        config: error.config
-      });
+      // Log the full error for debugging, but only in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('API Debug:', {
+          status: error.response?.status,
+          data: error.response?.data,
+          url: error.config?.url,
+          method: error.config?.method,
+          message: error.message || 'Unknown error'
+        });
+      }
     }
     
+    // Always ensure we return a rejected promise with the error
     return Promise.reject(error);
   }
 );
@@ -264,4 +275,4 @@ export const telemetryApi = {
   }
 };
 
-export default api; 
+export default api;
