@@ -27,14 +27,19 @@ export default function CartPage() {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
 
+  // Redirect to login if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
       router.push('/login?returnTo=/cart');
     }
   }, [isAuthenticated, router]);
 
-  const handleQuantityChange = (productId, newQuantity) => {
-    updateQuantity(productId, parseInt(newQuantity));
+  const handleQuantityChange = async (productId, newQuantity) => {
+    try {
+      await updateQuantity(productId, parseInt(newQuantity));
+    } catch (error) {
+      console.log('Quantity update error:', error);
+    }
   };
   
   const handleRemoveItem = (productId) => {
@@ -82,8 +87,6 @@ export default function CartPage() {
         throw new Error('Invalid response from server');
       }
       
-      console.log('Coupon API response:', data);
-
       // Make sure the couponId is included
       if (!data.couponId) {
         throw new Error('Coupon ID is missing in the API response');
@@ -177,26 +180,6 @@ export default function CartPage() {
     );
   }
 
-  if (cartError) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">Error</h3>
-              <p className="mt-1 text-sm text-red-700">{cartError}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   if (cartItems.length === 0) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -238,8 +221,44 @@ export default function CartPage() {
   const total = getDiscountedTotal() + shippingEstimate + taxEstimate;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Your Cart</h1>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <h1 className="text-3xl font-bold text-gray-900">Shopping Cart</h1>
+      
+      {/* Stock error message */}
+      {cartError && cartError.includes('Stock Error') && (
+        <div className="mt-6 bg-red-50 border border-red-200 rounded-md p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">Error</h3>
+              <p className="mt-1 text-sm text-red-700">{cartError}</p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Coupon error message */}
+      {couponError && (
+        <div className="mt-6 bg-red-50 border border-red-200 rounded-md p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">Coupon Error</h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>{couponError}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="lg:grid lg:grid-cols-12 lg:gap-x-12 lg:items-start">
         <div className="lg:col-span-7">
@@ -302,7 +321,7 @@ export default function CartPage() {
                 <div className="bg-green-50 border border-green-200 rounded-md p-4">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
                     </div>
@@ -351,9 +370,6 @@ export default function CartPage() {
                   </button>
                 </div>
               )}
-              {couponError && (
-                <p className="mt-2 text-sm text-red-600">{couponError}</p>
-              )}
             </form>
 
             <div className="border-t border-gray-200 pt-6">
@@ -389,12 +405,26 @@ export default function CartPage() {
             </div>
 
             <div className="mt-6">
-              <Link
-                href="/checkout"
-                className="w-full flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
-              >
-                Proceed to Checkout
-              </Link>
+              {cartError && cartError.includes('Stock Error') ? (
+                <div className="space-y-4">
+                  <button
+                    disabled
+                    className="w-full flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-gray-400 cursor-not-allowed"
+                  >
+                    Proceed to Checkout
+                  </button>
+                  <p className="text-sm text-red-600 text-center">
+                    Please adjust item quantities to continue
+                  </p>
+                </div>
+              ) : (
+                <Link
+                  href="/checkout"
+                  className="w-full flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+                >
+                  Proceed to Checkout
+                </Link>
+              )}
             </div>
           </div>
         </div>

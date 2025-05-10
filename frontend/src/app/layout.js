@@ -3,6 +3,7 @@ import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { AuthProvider } from '../context/AuthContext';
 import { CartProvider } from '../context/CartContext';
+import ErrorBoundary from '../components/layout/ErrorBoundary';
 
 export const metadata = {
   title: 'ShopEasy - Your Online Shopping Destination',
@@ -14,13 +15,15 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className="flex flex-col min-h-screen">
         <AuthProvider>
-          <CartProvider>
-            <Navbar />
-            <main className="flex-grow">
-              {children}
-            </main>
-            <Footer />
-          </CartProvider>
+          <ErrorBoundary>
+            <CartProvider>
+              <Navbar />
+              <main className="flex-grow">
+                {children}
+              </main>
+              <Footer />
+            </CartProvider>
+          </ErrorBoundary>
         </AuthProvider>
       </body>
     </html>

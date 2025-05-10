@@ -13,10 +13,13 @@ const Navbar = () => {
 
   // Update cart count when items change
   useEffect(() => {
-    if (getCartCount) {
-      setCartItemCount(getCartCount());
+    if (cartItems && cartItems.length >= 0) {
+      const count = cartItems.reduce((total, item) => total + item.quantity, 0);
+      setCartItemCount(count);
+    } else {
+      setCartItemCount(0);
     }
-  }, [getCartCount, cartItems]);
+  }, [cartItems]);
 
   // Handle logout
   const handleLogout = () => {
