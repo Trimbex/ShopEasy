@@ -10,7 +10,8 @@ export default function RegisterPage() {
     name: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    termsAccepted: false
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -19,10 +20,10 @@ export default function RegisterPage() {
   const { register, error: authError } = useAuth();
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }));
     
     // Clear error when field is being edited
@@ -55,6 +56,10 @@ export default function RegisterPage() {
     
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
+    }
+
+    if (!formData.termsAccepted) {
+      newErrors.termsAccepted = 'You must agree to the Terms of Service and Privacy Policy';
     }
     
     setErrors(newErrors);
@@ -207,11 +212,13 @@ export default function RegisterPage() {
             <div className="flex items-center">
               <input
                 id="terms"
-                name="terms"
+                name="termsAccepted"
                 type="checkbox"
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                checked={formData.termsAccepted}
+                onChange={handleChange}
+                className={`h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded ${errors.termsAccepted ? 'border-red-300' : ''}`}
               />
-              <label htmlFor="terms" className="ml-2 block text-sm text-gray-900">
+              <label htmlFor="terms" className={`ml-2 block text-sm ${errors.termsAccepted ? 'text-red-600' : 'text-gray-900'}`}>
                 I agree to the{' '}
                 <Link href="/terms" className="font-medium text-indigo-600 hover:text-indigo-500">
                   Terms of Service
@@ -222,6 +229,9 @@ export default function RegisterPage() {
                 </Link>
               </label>
             </div>
+            {errors.termsAccepted && (
+              <p className="mt-2 text-sm text-red-600">{errors.termsAccepted}</p>
+            )}
 
             <div>
               <button
