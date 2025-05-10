@@ -121,10 +121,14 @@ const AdminOrdersPage = () => {
         status: newStatus
       });
 
-      // Update orders list while preserving user data
+      // Update orders list while preserving user data and coupon
       setOrders(orders.map(order => 
         order.id === selectedOrder.id 
-          ? { ...data, user: order.user } // Preserve the user data
+          ? { 
+              ...data, 
+              user: order.user,
+              coupon: order.coupon
+            }
           : order
       ));
 
@@ -270,7 +274,10 @@ const AdminOrdersPage = () => {
                       Customer
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
+                      Items
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Coupon
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Total
@@ -278,53 +285,91 @@ const AdminOrdersPage = () => {
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date
+                    </th>
                     <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredOrders.map((order) => (
-                    <tr key={order.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        #{order.id}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {order.user?.name || 'N/A'}
-                        <br />
-                        <span className="text-xs">{order.user?.email || 'N/A'}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(order.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        ${Number(order.total).toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          order.status === 'DELIVERED' ? 'bg-green-100 text-green-800' :
-                          order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-800' :
-                          order.status === 'PROCESSING' ? 'bg-yellow-100 text-yellow-800' :
-                          order.status === 'CANCELED' ? 'bg-gray-100 text-gray-500' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {order.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => {
-                            setSelectedOrder(order);
-                            setNewStatus('');
-                            setIsModalOpen(true);
-                          }}
-                          className="text-indigo-600 hover:text-indigo-900"
-                        >
-                          Update Status
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredOrders.map((order) => {
+                    const subtotal = order.items.reduce((total, item) => total + (item.price * item.quantity), 0);
+                    const discount = order.coupon ? (subtotal * order.coupon.percentDiscount) / 100 : 0;
+                    const shippingEstimate = subtotal > 50 ? 0 : 5.99;
+                    const taxEstimate = (subtotal - discount) * 0.08;
+                    const total = order.total;
+
+                    return (
+                      <tr key={order.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          #{order.id}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {order.user?.name || 'N/A'}
+                          <br />
+                          <span className="text-xs">{order.user?.email || 'N/A'}</span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          <ul>
+                            {order.items.map((item) => (
+                              <li key={item.id}>
+                                {item.quantity}x {item.product.name}
+                              </li>
+                            ))}
+                          </ul>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {order.coupon ? (
+                            <div>
+                              <span className="font-medium text-green-600">{order.coupon.alias}</span>
+                              <br />
+                              <span className="text-xs">{order.coupon.percentDiscount}% off</span>
+                              <br />
+                              <span className="text-xs text-green-600">-${discount.toFixed(2)}</span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400">No coupon</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          ${Number(total).toFixed(2)}
+                          {order.coupon && (
+                            <div className="text-xs text-gray-500 line-through">
+                              ${(subtotal + shippingEstimate + taxEstimate).toFixed(2)}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            order.status === 'DELIVERED' ? 'bg-green-100 text-green-800' :
+                            order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-800' :
+                            order.status === 'PROCESSING' ? 'bg-yellow-100 text-yellow-800' :
+                            order.status === 'CANCELED' ? 'bg-gray-100 text-gray-500' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {order.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(order.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button
+                            onClick={() => {
+                              setSelectedOrder(order);
+                              setNewStatus('');
+                              setIsModalOpen(true);
+                            }}
+                            className="text-indigo-600 hover:text-indigo-900"
+                          >
+                            Update Status
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

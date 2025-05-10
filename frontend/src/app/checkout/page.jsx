@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCart } from '../../context/CartContext';
@@ -10,7 +10,16 @@ import api from '../../services/api';
 export default function CheckoutPage() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
-  const { cartItems, getCartTotal, clearCart } = useCart();
+  const { 
+    cartItems, 
+    getCartTotal, 
+    getDiscountedTotal,
+    appliedCoupon,
+    discount,
+    applyCoupon,
+    removeCoupon,
+    clearCart
+  } = useCart();
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -19,31 +28,41 @@ export default function CheckoutPage() {
     address: '',
     city: '',
     state: '',
-    postalCode: '',
-    country: 'US',
-    cardName: '',
+    zipCode: '',
+    country: '',
     cardNumber: '',
-    expirationDate: '',
+    cardName: '',
+    expiryDate: '',
     cvv: ''
   });
   
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponError, setCouponError] = useState(null);
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [error, setError] = useState(null);
+  const [orderInProgress, setOrderInProgress] = useState(false);
 
   // Redirect to login if not authenticated
-  useState(() => {
+  useEffect(() => {
     if (!isAuthenticated) {
-      // Comment: In a real app, you'd redirect to login with a return URL
-      // router.push('/login?returnTo=/checkout');
+      router.push('/login?returnTo=/checkout');
     }
   }, [isAuthenticated, router]);
 
   // Redirect to cart if cart is empty
-  useState(() => {
-    if (cartItems.length === 0) {
+  useEffect(() => {
+    if (cartItems.length === 0 && !orderInProgress) {
       router.push('/cart');
     }
-  }, [cartItems, router]);
+  }, [cartItems, router, orderInProgress]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log('[CHECKOUT] Initial appliedCoupon:', appliedCoupon);
+    }
+  }, [isAuthenticated, appliedCoupon]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -79,7 +98,7 @@ export default function CheckoutPage() {
     if (!formData.address.trim()) newErrors.address = 'Address is required';
     if (!formData.city.trim()) newErrors.city = 'City is required';
     if (!formData.state.trim()) newErrors.state = 'State is required';
-    if (!formData.postalCode.trim()) newErrors.postalCode = 'Postal code is required';
+    if (!formData.zipCode.trim()) newErrors.zipCode = 'Zip code is required';
     
     // Validate payment info
     if (!formData.cardName.trim()) newErrors.cardName = 'Name on card is required';
@@ -89,10 +108,10 @@ export default function CheckoutPage() {
       newErrors.cardNumber = 'Card number is invalid';
     }
     
-    if (!formData.expirationDate.trim()) {
-      newErrors.expirationDate = 'Expiration date is required';
-    } else if (!/^\d{2}\/\d{2}$/.test(formData.expirationDate)) {
-      newErrors.expirationDate = 'Use format MM/YY';
+    if (!formData.expiryDate.trim()) {
+      newErrors.expiryDate = 'Expiration date is required';
+    } else if (!/^\d{2}\/\d{2}$/.test(formData.expiryDate)) {
+      newErrors.expiryDate = 'Use format MM/YY';
     }
     
     if (!formData.cvv.trim()) {
@@ -108,53 +127,158 @@ export default function CheckoutPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
+    // Validate the form first
+    if (!validateForm()) {
+      return;
+    }
     
     setIsSubmitting(true);
-    
-    const checkoutData = {
-      shippingInfo: {
-        name: `${formData.firstName} ${formData.lastName}`,
-        address: formData.address,
-        city: formData.city,
-        state: formData.state,
-        postalCode: formData.postalCode,
-        country: formData.country,
-        shippingCost: shippingEstimate
-      },
-      paymentInfo: {
-        type: 'Credit Card',
-        cardName: formData.cardName,
-        cardNumber: formData.cardNumber,
-        expirationDate: formData.expirationDate,
-        cvv: formData.cvv
-      },
-      items: cartItems.map(item => ({
-        productId: item.id,
-        quantity: item.quantity
-      }))
-    };
-    
+    setError(null);
+    setOrderInProgress(true);
+
     try {
-      // Set the auth token for this request
-      api.defaults.headers.common['Authorization'] = `Bearer ${localStorage.getItem('token')}`;
+      // Log the coupon before creating the order
+      console.log('Coupon being used for order:', appliedCoupon);
       
-      const { data } = await api.post('/orders', checkoutData);
-      clearCart();
-      router.push(`/order-confirmation/${data.id}`);
-    } catch (error) {
-      console.error('Checkout error:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to create order. Please try again.';
-      setErrors({ form: errorMessage });
+      // Create order data with careful handling of couponId
+      const orderData = {
+        items: cartItems.map(item => ({
+          productId: item.id,
+          quantity: item.quantity,
+          price: item.price
+        })),
+        shippingInfo: {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode,
+          country: formData.country || 'US' // Default to US if empty
+        },
+        paymentInfo: {
+          cardNumber: formData.cardNumber,
+          cardName: formData.cardName,
+          expiryDate: formData.expiryDate,
+          cvv: formData.cvv
+        },
+        // Explicitly handle couponId to ensure it's not undefined
+        couponId: appliedCoupon?.id || null,
+        total: getDiscountedTotal()
+      };
+      
+      // Log the order data
+      console.log('Order data being sent:', orderData);
+
+      // Make sure we have a token
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication token missing. Please log in again.');
+      }
+      
+      // Set the authorization header
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      // Submit the order with explicit try/catch
+      try {
+        const response = await api.post('/orders', orderData);
+        console.log('Order created successfully:', response.data);
+        
+        // Clear the cart after successful order submission
+        clearCart();
+        
+        // Make sure we have an order ID before redirecting
+        if (response.data && response.data.id) {
+          // Redirect to the order confirmation page
+          await router.push(`/order-confirmation/${response.data.id}`);
+        } else {
+          console.error('Missing order ID in response:', response.data);
+          throw new Error('Order was created but no order ID was returned');
+        }
+      } catch (apiError) {
+        console.error('API request failed:', {
+          status: apiError.response?.status,
+          data: apiError.response?.data,
+          message: apiError.message
+        });
+        throw apiError;
+      }
+    } catch (err) {
+      console.error('Checkout error:', err);
+      let errorMessage = 'Failed to process your order. Please try again.';
+      
+      if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
+      setOrderInProgress(false);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError('Please enter a coupon code');
+      return;
+    }
+
+    setIsApplyingCoupon(true);
+    setCouponError(null);
+
+    try {
+      // Ensure token is set
+      const token = localStorage.getItem('token');
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      // Make the API call
+      const response = await api.post('/coupons/apply', {
+        alias: couponCode,
+        orderTotal: getCartTotal()
+      });
+      
+      // Get the data from the response
+      const data = response.data;
+      
+      // Ensure couponId exists
+      if (!data.couponId) {
+        throw new Error('Coupon ID is missing from API response');
+      }
+      
+      // Create a coupon object with proper structure
+      const coupon = {
+        id: data.couponId,
+        alias: data.alias,
+        percentDiscount: data.percentDiscount
+      };
+      
+      // Apply the coupon
+      applyCoupon(coupon, data.discount);
+      setCouponError(null);
+    } catch (error) {
+      console.error('Error applying coupon:', error);
+      setCouponError(error.response?.data?.error || 'Invalid coupon code');
+      removeCoupon();
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    console.log('[COUPON] Removing coupon, current state:', appliedCoupon);
+    removeCoupon();
+    setCouponCode('');
+    setCouponError(null);
+    console.log('[COUPON] After removing, appliedCoupon should be null');
+  };
+
   const subtotal = getCartTotal();
   const shippingEstimate = subtotal > 50 ? 0 : 5.99;
-  const taxEstimate = subtotal * 0.08;
-  const total = subtotal + shippingEstimate + taxEstimate;
+  const taxEstimate = (subtotal - discount) * 0.08;
+  const total = getDiscountedTotal() + shippingEstimate + taxEstimate;
 
   return (
     <div className="bg-gray-50">
@@ -279,19 +403,19 @@ export default function CheckoutPage() {
                   </div>
 
                   <div>
-                    <label htmlFor="postalCode" className="block text-sm font-medium text-gray-700">
-                      Postal code
+                    <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700">
+                      Zip code
                     </label>
                     <input
                       type="text"
-                      id="postalCode"
-                      name="postalCode"
-                      value={formData.postalCode}
+                      id="zipCode"
+                      name="zipCode"
+                      value={formData.zipCode}
                       onChange={handleChange}
-                      className={`mt-1 block w-full border ${errors.postalCode ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                      className={`mt-1 block w-full border ${errors.zipCode ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
                     />
-                    {errors.postalCode && (
-                      <p className="mt-1 text-sm text-red-600">{errors.postalCode}</p>
+                    {errors.zipCode && (
+                      <p className="mt-1 text-sm text-red-600">{errors.zipCode}</p>
                     )}
                   </div>
 
@@ -355,20 +479,20 @@ export default function CheckoutPage() {
                   </div>
 
                   <div>
-                    <label htmlFor="expirationDate" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="expiryDate" className="block text-sm font-medium text-gray-700">
                       Expiration date (MM/YY)
                     </label>
                     <input
                       type="text"
-                      id="expirationDate"
-                      name="expirationDate"
-                      value={formData.expirationDate}
+                      id="expiryDate"
+                      name="expiryDate"
+                      value={formData.expiryDate}
                       onChange={handleChange}
                       placeholder="MM/YY"
-                      className={`mt-1 block w-full border ${errors.expirationDate ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                      className={`mt-1 block w-full border ${errors.expiryDate ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
                     />
-                    {errors.expirationDate && (
-                      <p className="mt-1 text-sm text-red-600">{errors.expirationDate}</p>
+                    {errors.expiryDate && (
+                      <p className="mt-1 text-sm text-red-600">{errors.expiryDate}</p>
                     )}
                   </div>
 
@@ -389,6 +513,65 @@ export default function CheckoutPage() {
                     )}
                   </div>
                 </div>
+              </div>
+
+              {/* Coupon Section */}
+              <div className="bg-white shadow-sm rounded-lg p-6 mb-8">
+                <h2 className="text-lg font-medium text-gray-900 mb-4">Apply Coupon</h2>
+                
+                {appliedCoupon ? (
+                  <div className="bg-green-50 border border-green-200 rounded-md p-4">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-green-800">
+                          Coupon Applied: {appliedCoupon.alias}
+                        </h3>
+                        <div className="mt-1 text-sm text-green-700">
+                          <p>{appliedCoupon.percentDiscount}% discount has been applied to your order.</p>
+                        </div>
+                        <div className="mt-3">
+                          <button
+                            type="button"
+                            onClick={handleRemoveCoupon}
+                            className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                          >
+                            Remove Coupon
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        placeholder="Enter coupon code"
+                        className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      />
+                      {couponError && (
+                        <p className="mt-1 text-sm text-red-600">{couponError}</p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleApplyCoupon}
+                      disabled={isApplyingCoupon}
+                      className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
+                        isApplyingCoupon ? 'opacity-70 cursor-not-allowed' : ''
+                      }`}
+                    >
+                      {isApplyingCoupon ? 'Applying...' : 'Apply'}
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="mt-6 flex items-center justify-between">
@@ -442,6 +625,19 @@ export default function CheckoutPage() {
                   <dt className="text-sm text-gray-600">Subtotal</dt>
                   <dd className="text-sm font-medium text-gray-900">${subtotal.toFixed(2)}</dd>
                 </div>
+                {discount > 0 && (
+                  <div className="flex justify-between py-2">
+                    <dt className="text-sm text-gray-600">
+                      Discount {appliedCoupon && `(${appliedCoupon.percentDiscount}% off)`}
+                      {appliedCoupon && (
+                        <span className="ml-2 text-xs text-green-600">Code: {appliedCoupon.alias}</span>
+                      )}
+                    </dt>
+                    <dd className="text-sm font-medium text-green-600">
+                      -${discount.toFixed(2)}
+                    </dd>
+                  </div>
+                )}
                 <div className="flex justify-between py-2">
                   <dt className="text-sm text-gray-600">Shipping</dt>
                   <dd className="text-sm font-medium text-gray-900">
@@ -456,7 +652,16 @@ export default function CheckoutPage() {
 
               <div className="flex justify-between pt-4">
                 <dt className="text-base font-medium text-gray-900">Total</dt>
-                <dd className="text-base font-medium text-gray-900">${total.toFixed(2)}</dd>
+                <dd className="text-base font-medium text-gray-900">
+                  {appliedCoupon ? (
+                    <div className="flex flex-col items-end">
+                      <span className="text-gray-500 line-through text-sm">${(subtotal + shippingEstimate + taxEstimate).toFixed(2)}</span>
+                      <span>${total.toFixed(2)}</span>
+                    </div>
+                  ) : (
+                    `$${total.toFixed(2)}`
+                  )}
+                </dd>
               </div>
             </div>
           </div>

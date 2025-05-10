@@ -16,6 +16,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [token, setToken] = useState(null);
   const router = useRouter();
 
   // Check if user is authenticated on page load
@@ -28,6 +29,8 @@ export const AuthProvider = ({ children }) => {
           setLoading(false);
           return;
         }
+        
+        setToken(token);
         
         const response = await fetch(`${API_URL}/auth/me`, {
           headers: {
@@ -50,7 +53,12 @@ export const AuthProvider = ({ children }) => {
       }
     };
 
-    checkAuth();
+    // Only run in browser environment
+    if (typeof window !== 'undefined') {
+      checkAuth();
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   // Register a new user
@@ -73,6 +81,7 @@ export const AuthProvider = ({ children }) => {
 
       // Store the token
       localStorage.setItem('token', data.token);
+      setToken(data.token);
       
       // Set the user data
       setUser(data);
@@ -104,6 +113,7 @@ export const AuthProvider = ({ children }) => {
 
       // Store the token
       localStorage.setItem('token', data.token);
+      setToken(data.token);
       
       // Set the user data
       setUser(data);
@@ -118,8 +128,11 @@ export const AuthProvider = ({ children }) => {
   // Logout
   const logout = () => {
     // Clear all auth-related data
-    localStorage.removeItem('token');
-    localStorage.removeItem('cart');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('cart');
+    }
+    setToken(null);
     setUser(null);
     
     // Force reload the page to clear all state
@@ -134,9 +147,12 @@ export const AuthProvider = ({ children }) => {
     setError(null);
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('Not authenticated');
-      const updatedUser = await userApi.updateProfile(profileData, token);
+      if (typeof window === 'undefined') throw new Error('Not in browser environment');
+      
+      const storedToken = localStorage.getItem('token');
+      if (!storedToken) throw new Error('Not authenticated');
+      
+      const updatedUser = await userApi.updateProfile(profileData, storedToken);
       setUser((prev) => ({ ...prev, ...updatedUser }));
       setLoading(false);
       return { success: true, user: updatedUser };
@@ -158,6 +174,7 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!user,
     isAdmin,
     updateProfile,
+    token
   };
 
   return (

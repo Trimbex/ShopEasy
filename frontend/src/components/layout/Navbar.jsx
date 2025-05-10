@@ -8,15 +8,15 @@ import { useCart } from '../../context/CartContext';
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
-  const { getItemsCount } = useCart();
+  const { getCartCount, cartItems } = useCart();
   const [cartItemCount, setCartItemCount] = useState(0);
 
   // Update cart count when items change
   useEffect(() => {
-    if (getItemsCount) {
-      setCartItemCount(getItemsCount());
+    if (getCartCount) {
+      setCartItemCount(getCartCount());
     }
-  }, [getItemsCount]);
+  }, [getCartCount, cartItems]);
 
   // Handle logout
   const handleLogout = () => {

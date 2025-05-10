@@ -9,9 +9,9 @@ import { useSearchParams } from 'next/navigation';
 import { productsApi } from '../../services/api';
 
 // SWR fetcher function
-const fetcher = async (url) => {
+const fetcher = async (url, { minRating, category } = {}) => {
   try {
-    const response = await productsApi.getAll();
+    const response = await productsApi.getAll({ minRating, category });
     return response;
   } catch (error) {
     throw new Error('Failed to fetch products');
@@ -27,6 +27,7 @@ const ProductsPage = () => {
   const [priceRange, setPriceRange] = useState([0, 1000]);
   const [selectedPriceRange, setSelectedPriceRange] = useState([0, 1000]);
   const [sortOption, setSortOption] = useState('featured');
+  const [minRating, setMinRating] = useState(0);
 
   // Update selected categories when URL changes
   useEffect(() => {
@@ -37,35 +38,90 @@ const ProductsPage = () => {
 
   // Enhanced SWR configuration
   const { data: products, error, mutate, isLoading, isValidating } = useSWR(
-    'products',
-    fetcher,
+    ['products', { minRating }],
+    ([url, params]) => fetcher(url, params),
     {
       revalidateOnFocus: true,
       revalidateOnReconnect: true,
-      refreshInterval: 30000,
       dedupingInterval: 5000,
       errorRetryCount: 3,
       onError: (err) => {
         console.error('Error fetching products:', err);
       },
       onSuccess: (data) => {
-        console.log('Products fetched successfully:', data);
+        console.log('Products fetched successfully:', data?.length || 0);
       }
     }
   );
 
-  // Filter products based on search, categories, and price range
+  // Refetch when minRating changes
+  useEffect(() => {
+    if (mutate) {
+      mutate();
+    }
+  }, [minRating, mutate]);
+
+  // Filter products based on search, categories, price range, and rating
   const filteredProducts = products?.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         product.description.toLowerCase().includes(searchQuery.toLowerCase());
+    // More precise search with less fuzzy matching
+    const searchTerm = searchQuery.toLowerCase().trim();
     
+    let matchesSearch = true;
+    if (searchTerm) {
+      // For longer search queries (3+ words), require more precise matches
+      const searchTerms = searchTerm.split(/\s+/).filter(term => term.length > 2);
+      
+      // If no valid search terms after filtering, consider it a match
+      if (searchTerms.length === 0) {
+        // Check if the whole search term matches
+        matchesSearch = product.name.toLowerCase().includes(searchTerm) || 
+                        product.description.toLowerCase().includes(searchTerm) ||
+                        product.category.toLowerCase().includes(searchTerm);
+      } else {
+        // Check product name with higher priority (exact product name match)
+        const nameMatch = product.name.toLowerCase().includes(searchTerm);
+        if (nameMatch) {
+          matchesSearch = true;
+        } else {
+          // For multi-word searches, require at least 50% of terms to match
+          const requiredMatches = Math.max(1, Math.ceil(searchTerms.length * 0.5));
+          let matchCount = 0;
+          
+          // Count matches across different fields
+          for (const term of searchTerms) {
+            if (product.name.toLowerCase().includes(term)) {
+              matchCount++;
+            } else if (product.description.toLowerCase().includes(term)) {
+              matchCount++;
+            } else if (product.category.toLowerCase().includes(term)) {
+              matchCount++;
+            } else if (product.tags && product.tags.some(tag => tag.toLowerCase().includes(term))) {
+              matchCount++;
+            }
+            
+            // Early return if we've already met the threshold
+            if (matchCount >= requiredMatches) {
+              matchesSearch = true;
+              break;
+            }
+          }
+          
+          matchesSearch = matchCount >= requiredMatches;
+        }
+      }
+    }
+    
+    // Check if ANY selected category matches
     const matchesCategory = selectedCategories.length === 0 || 
                            selectedCategories.includes(product.category);
     
     const matchesPrice = product.price >= selectedPriceRange[0] && 
                         product.price <= selectedPriceRange[1];
     
-    return matchesSearch && matchesCategory && matchesPrice;
+    const matchesRating = minRating === 0 || 
+                         (product.averageRating >= minRating);
+    
+    return matchesSearch && matchesCategory && matchesPrice && matchesRating;
   }) || [];
 
   // Sort products
@@ -79,6 +135,8 @@ const ProductsPage = () => {
         return a.name.localeCompare(b.name);
       case 'name-desc':
         return b.name.localeCompare(a.name);
+      case 'rating-high':
+        return b.averageRating - a.averageRating;
       default:
         return 0;
     }
@@ -136,12 +194,14 @@ const ProductsPage = () => {
       <div className="flex flex-col md:flex-row gap-8">
         <div className="w-full md:w-64">
           <ProductFilter
-            categories={Array.from(new Set(products.map(p => p.category)))}
+            categories={Array.from(new Set(products?.map(p => p.category) || []))}
             selectedCategories={selectedCategories}
             onCategoryChange={setSelectedCategories}
             priceRange={priceRange}
             selectedPriceRange={selectedPriceRange}
             onPriceRangeChange={setSelectedPriceRange}
+            selectedRating={minRating}
+            onRatingChange={setMinRating}
           />
         </div>
         
@@ -161,6 +221,7 @@ const ProductsPage = () => {
               <option value="price-high">Price: High to Low</option>
               <option value="name-asc">Name: A to Z</option>
               <option value="name-desc">Name: Z to A</option>
+              <option value="rating-high">Highest Rated</option>
             </select>
             
             {isValidating && (
@@ -170,11 +231,54 @@ const ProductsPage = () => {
             )}
           </div>
           
+          <div className="mb-4">
+            <div className="flex flex-wrap gap-2">
+              {selectedCategories.length > 0 && (
+                <div className="flex items-center">
+                  <span className="text-sm mr-2">Categories:</span>
+                  {selectedCategories.map(cat => (
+                    <span key={cat} className="text-xs bg-gray-100 px-2 py-1 rounded-full flex items-center mr-1">
+                      {cat}
+                      <button 
+                        onClick={() => setSelectedCategories(selectedCategories.filter(c => c !== cat))}
+                        className="ml-1 text-gray-500 hover:text-gray-700"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              
+              {minRating > 0 && (
+                <div className="flex items-center">
+                  <span className="text-sm mr-2">Rating:</span>
+                  <span className="text-xs bg-gray-100 px-2 py-1 rounded-full flex items-center">
+                    {minRating}+ Stars
+                    <button 
+                      onClick={() => setMinRating(0)}
+                      className="ml-1 text-gray-500 hover:text-gray-700"
+                    >
+                      ×
+                    </button>
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+          
           <ProductGrid 
             products={sortedProducts} 
             onProductUpdate={mutate}
             isValidating={isValidating}
           />
+          
+          {sortedProducts.length === 0 && (
+            <div className="text-center py-12 bg-gray-50 rounded-lg">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
+              <p className="text-gray-500">Try adjusting your filters or search criteria</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,13 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const SignInModal = ({ isOpen, onClose }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
   const { login, register, error, setError } = useAuth();
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsVisible(true);
+    } else {
+      const timer = setTimeout(() => {
+        setIsVisible(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -26,11 +39,22 @@ const SignInModal = ({ isOpen, onClose }) => {
     }
   };
 
-  if (!isOpen) return null;
+  if (!isVisible && !isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 transform transition-all">
+  const modalContent = (
+    <div 
+      className={`fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300 ease-in-out ${
+        isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+      }`}
+      onClick={onClose}
+      style={{ isolation: 'isolate' }}
+    >
+      <div 
+        className={`bg-white rounded-lg p-8 max-w-md w-full mx-4 transform-gpu will-change-transform pointer-events-auto ${
+          isOpen ? 'opacity-100' : 'opacity-0'
+        }`}
+        onClick={e => e.stopPropagation()}
+      >
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900">
             {isLogin ? 'Sign In' : 'Create Account'}
@@ -99,6 +123,8 @@ const SignInModal = ({ isOpen, onClose }) => {
       </div>
     </div>
   );
+
+  return typeof window !== 'undefined' ? createPortal(modalContent, document.body) : null;
 };
 
 export default SignInModal; 
