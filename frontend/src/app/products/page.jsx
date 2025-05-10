@@ -24,8 +24,8 @@ const ProductsPage = () => {
   const categoryParam = searchParams.get('category');
 
   const [selectedCategories, setSelectedCategories] = useState(categoryParam ? [categoryParam] : []);
-  const [priceRange, setPriceRange] = useState([0, 1000]);
-  const [selectedPriceRange, setSelectedPriceRange] = useState([0, 1000]);
+  const [priceRange, setPriceRange] = useState([0, 5000]);
+  const [selectedPriceRange, setSelectedPriceRange] = useState([0, 5000]);
   const [sortOption, setSortOption] = useState('featured');
   const [minRating, setMinRating] = useState(0);
 
@@ -60,6 +60,25 @@ const ProductsPage = () => {
       mutate();
     }
   }, [minRating, mutate]);
+
+  // Calculate price range when products are loaded
+  useEffect(() => {
+    if (products && products.length > 0) {
+      const prices = products.map(p => p.price);
+      const minPrice = Math.floor(Math.min(...prices));
+      const maxPrice = Math.ceil(Math.max(...prices) * 1.1); // Add 10% buffer to max price
+      
+      // Only update if different to avoid unnecessary rerenders
+      if (minPrice !== priceRange[0] || maxPrice !== priceRange[1]) {
+        setPriceRange([minPrice, maxPrice]);
+        
+        // Only update selected range if it's still at the default values
+        if (selectedPriceRange[0] === priceRange[0] && selectedPriceRange[1] === priceRange[1]) {
+          setSelectedPriceRange([minPrice, maxPrice]);
+        }
+      }
+    }
+  }, [products]);
 
   // Filter products based on search, categories, price range, and rating
   const filteredProducts = products?.filter(product => {
@@ -115,8 +134,10 @@ const ProductsPage = () => {
     const matchesCategory = selectedCategories.length === 0 || 
                            selectedCategories.includes(product.category);
     
-    const matchesPrice = product.price >= selectedPriceRange[0] && 
-                        product.price <= selectedPriceRange[1];
+    // Modified price filter logic to handle "no min" and "no max" options
+    const matchesPrice = 
+      (product.price >= selectedPriceRange[0] || selectedPriceRange[0] === priceRange[0]) && 
+      (product.price <= selectedPriceRange[1] || selectedPriceRange[1] === priceRange[1]);
     
     const matchesRating = minRating === 0 || 
                          (product.averageRating >= minRating);
