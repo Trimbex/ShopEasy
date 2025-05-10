@@ -77,9 +77,9 @@ export default function TermsPage() {
             <li>Unauthorized access, use, or alteration of your transmissions or content.</li>
           </ol>
           
-          <h2>Returns and Refunds</h2>
+          <h2>Order History</h2>
           <p>
-            Our return and refund policy is designed to ensure your satisfaction with our products. For detailed information, please visit our <Link href="/returns" className="text-indigo-600 hover:text-indigo-800">Returns and Refunds page</Link>.
+            You can view your complete order history by logging into your account. This allows you to track all your purchases, review order details, and check delivery status. For any questions regarding past orders, please visit the <Link href="/profile" className="text-indigo-600 hover:text-indigo-800">Order History section</Link> in your profile.
           </p>
           
           <h2>Privacy</h2>

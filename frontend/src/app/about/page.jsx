@@ -38,28 +38,34 @@ export default function AboutPage() {
 
   const teamMembers = [
     {
-      name: "Jane Smith",
+      name: "Mohamed Fadel",
       role: "CEO & Founder",
-      image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
-      bio: "Jane has over 15 years of experience in retail and e-commerce, and founded ShopEasy to create a better shopping experience."
+      bio: "Mohamed has over 15 years of experience in retail and e-commerce, and founded ShopEasy to create a better shopping experience."
     },
     {
-      name: "Michael Johnson",
+      name: "Saifeldin Mohamed",
       role: "CTO",
-      image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
-      bio: "Michael leads our engineering team and is responsible for building our state-of-the-art e-commerce platform."
+      bio: "Saifeldin leads our engineering team and is responsible for building our state-of-the-art e-commerce platform."
     },
     {
-      name: "Sarah Chen",
+      name: "Ahmed Elsheikh",
       role: "Head of Product",
-      image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
-      bio: "Sarah oversees our product catalog and ensures we offer the best selection of quality products to our customers."
+      bio: "Ahmed oversees our product catalog and ensures we offer the best selection of quality products to our customers."
     },
     {
-      name: "David Wilson",
+      name: "Belal Anas",
       role: "Customer Experience Manager",
-      image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
-      bio: "David is dedicated to ensuring every customer has an exceptional experience shopping with us."
+      bio: "Belal is dedicated to ensuring every customer has an exceptional experience shopping with us."
+    },
+    {
+      name: "Ahmad Muhammad",
+      role: "Marketing Director",
+      bio: "Ahmad leads our marketing initiatives and is responsible for growing our customer base through innovative campaigns."
+    },
+    {
+      name: "Mazen Ahmed",
+      role: "Operations Manager",
+      bio: "Mazen ensures the smooth operation of our logistics and supply chain to deliver products efficiently to our customers."
     }
   ];
 
@@ -222,19 +228,17 @@ export default function AboutPage() {
             </motion.p>
           </div>
 
-          <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-3">
             {teamMembers.map((member, index) => (
               <motion.div 
                 key={index} 
                 className="text-center"
                 variants={itemFadeIn}
               >
-                <div className="mx-auto h-40 w-40 rounded-full overflow-hidden mb-4">
-                  <img 
-                    src={member.image} 
-                    alt={member.name}
-                    className="h-full w-full object-cover"
-                  />
+                <div className="mx-auto h-20 w-20 rounded-full bg-indigo-100 flex items-center justify-center mb-4">
+                  <span className="text-indigo-700 font-bold text-xl">
+                    {member.name.split(' ').map(name => name[0]).join('')}
+                  </span>
                 </div>
                 <h3 className="text-xl font-medium text-gray-900">{member.name}</h3>
                 <p className="text-indigo-600 mb-2">{member.role}</p>

@@ -17,7 +17,7 @@ export default function FAQPage() {
     },
     {
       question: "What payment methods do you accept?",
-      answer: "We accept all major credit cards (Visa, MasterCard, American Express), PayPal, and Apple Pay. All payments are securely processed."
+      answer: "We accept all major credit cards (Visa, MasterCard, American Express), PayPal, and Vodafone Cash. All payments are securely processed."
     },
     {
       question: "What is your return policy?",
@@ -34,10 +34,6 @@ export default function FAQPage() {
     {
       question: "Can I change or cancel my order?",
       answer: "You can modify or cancel your order within 1 hour of placing it. After that, the order goes into processing and cannot be changed. Please contact customer service immediately if you need to make changes."
-    },
-    {
-      question: "Do you offer gift wrapping?",
-      answer: "Yes, we offer gift wrapping services for a small additional fee. You can select this option during checkout and even include a personalized message."
     },
     {
       question: "How do I contact customer support?",
