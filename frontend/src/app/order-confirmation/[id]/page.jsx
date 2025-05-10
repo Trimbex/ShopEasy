@@ -47,9 +47,9 @@ export default function OrderConfirmation() {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="bg-white shadow-sm rounded-lg p-8 text-center">
-          <svg className="mx-auto h-12 w-12 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+          <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
+            <span className="text-2xl text-red-600">❌</span>
+          </div>
           <h2 className="mt-2 text-lg font-medium text-gray-900">Error Loading Order</h2>
           <p className="mt-1 text-sm text-gray-500">
             {error || "We couldn't find the order you're looking for."}
@@ -77,10 +77,8 @@ export default function OrderConfirmation() {
         <div className="bg-white shadow-sm rounded-lg p-6 md:p-8">
           <div className="text-center border-b border-gray-200 pb-8">
             <div className="flex justify-center items-center mb-6">
-              <div className="bg-green-100 rounded-full p-3">
-                <svg className="h-12 w-12 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
+              <div className="bg-green-100 rounded-full p-3 h-16 w-16 flex items-center justify-center">
+                <span className="text-2xl text-green-600">✓</span>
               </div>
             </div>
             <h1 className="text-3xl font-bold text-gray-900">Thank you for your order!</h1>
@@ -120,8 +118,40 @@ export default function OrderConfirmation() {
                 </div>
                 <div className="flex justify-between">
                   <dt className="font-medium text-gray-600">Payment method:</dt>
-                  <dd className="text-gray-900">
-                    {order.paymentInfo?.type || 'Credit Card'} (**** {order.paymentInfo?.cardNumber?.slice(-4) || '0000'})
+                  <dd className="text-gray-900 flex items-center">
+                    {order.paymentInfo?.method === 'vodafoneCash' && (
+                      <>
+                        <span className="inline-flex items-center justify-center bg-red-100 text-red-800 h-6 w-6 rounded mr-2">
+                          <span className="text-xs font-bold">📱</span>
+                        </span>
+                        <span>Vodafone Cash</span>
+                        {order.paymentInfo?.phoneNumber && (
+                          <span className="ml-1 text-sm text-gray-500">(**** {order.paymentInfo?.phoneNumber.slice(-4) || '0000'})</span>
+                        )}
+                      </>
+                    )}
+                    {order.paymentInfo?.method === 'paypal' && (
+                      <>
+                        <span className="inline-flex items-center justify-center bg-blue-100 text-blue-800 h-6 w-6 rounded mr-2">
+                          <span className="text-xs font-bold">@</span>
+                        </span>
+                        <span>PayPal</span>
+                        {order.paymentInfo?.paypalEmail && (
+                          <span className="ml-1 text-sm text-gray-500">({order.paymentInfo?.paypalEmail})</span>
+                        )}
+                      </>
+                    )}
+                    {order.paymentInfo?.method !== 'paypal' && order.paymentInfo?.method !== 'vodafoneCash' && (
+                      <>
+                        <span className="inline-flex items-center justify-center bg-orange-100 text-orange-800 h-6 w-6 rounded mr-2">
+                          <span className="text-xs font-bold">💳</span>
+                        </span>
+                        <span>Credit Card</span>
+                        {order.paymentInfo?.cardNumber && (
+                          <span className="ml-1 text-sm text-gray-500">(**** {order.paymentInfo?.cardNumber?.slice(-4) || '0000'})</span>
+                        )}
+                      </>
+                    )}
                   </dd>
                 </div>
               </dl>
@@ -168,11 +198,23 @@ export default function OrderConfirmation() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10 bg-gray-200 rounded overflow-hidden">
-                            <img
-                              src={item.product?.imageUrl}
-                              alt={item.product?.name}
-                              className="h-full w-full object-cover"
-                            />
+                            {item.product?.imageUrl ? (
+                              <img
+                                src={item.product.imageUrl}
+                                alt={item.product?.name || 'Product image'}
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = "https://cdn.jsdelivr.net/npm/@tailwindcss/placeholder-images@1.0.0/dist/img/placeholder-product.png";
+                                }}
+                              />
+                            ) : (
+                              <img
+                                src="https://cdn.jsdelivr.net/npm/@tailwindcss/placeholder-images@1.0.0/dist/img/placeholder-product.png"
+                                alt="Product placeholder"
+                                className="h-full w-full object-cover"
+                              />
+                            )}
                           </div>
                           <div className="ml-4">
                             <div className="text-sm font-medium text-gray-900">
