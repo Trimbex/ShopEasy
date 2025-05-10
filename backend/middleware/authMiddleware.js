@@ -8,6 +8,7 @@ export const authenticate = (req, res, next) => {
   try {
     // Get the authorization header
     const authHeader = req.headers.authorization;
+    console.log('Authentication middleware - Authorization header:', authHeader ? 'Present' : 'Missing');
     
     console.log('Auth Header:', authHeader);
     
@@ -30,7 +31,7 @@ export const authenticate = (req, res, next) => {
     
     // Verify the token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('Token verified successfully, user ID:', decoded.id);
+
     
     // Attach the user data to the request
     req.user = decoded;
@@ -53,6 +54,7 @@ export const authenticate = (req, res, next) => {
  * Must be used after the authenticate middleware
  */
 export const adminOnly = (req, res, next) => {
+  console.log('adminOnly middleware - req.user:', req.user);
   // Check if user exists and is an admin
   if (!req.user || !req.user.isAdmin) {
     return res.status(403).json({
@@ -75,11 +77,15 @@ export const optionalAuthenticate = (req, res, next) => {
       const token = authHeader.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       req.user = decoded;
+      console.log('Optional authentication - User decoded:', { id: decoded.id, isAdmin: decoded.isAdmin });
+    } else {
+      console.log('Optional authentication - No token provided');
     }
     
     next();
   } catch (error) {
     // If there's an error with the token, just continue without setting user
+    console.log('Optional authentication - Error:', error.message);
     next();
   }
 }; 

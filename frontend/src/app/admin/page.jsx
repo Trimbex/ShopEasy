@@ -12,7 +12,12 @@ const AdminPanel = () => {
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
   const [loadingStats, setLoadingStats] = useState(true);
+
+  const [lowStockCount, setLowStockCount] = useState(0);
+  const [outOfStockCount, setOutOfStockCount] = useState(0);
+  const [lowStockProducts, setLowStockProducts] = useState([]);
   const [timePeriod, setTimePeriod] = useState('all');
+
 
   useEffect(() => {
     // Redirect if not admin
@@ -39,9 +44,39 @@ const AdminPanel = () => {
     }
   };
 
-  useEffect(() => {
-    if (isAuthenticated && user?.isAdmin) {
-      fetchDashboardStats(timePeriod);
+useEffect(() => {
+  const fetchLowStockCount = async () => {
+    try {
+      if (isAuthenticated && user?.isAdmin) {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:5000/api/products/low-stock', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // Store the actual low stock products for the alert
+          setLowStockProducts(data);
+          // Count out of stock items separately
+          const outOfStockCount = data.filter(p => p.stock === 0).length;
+          const lowStockCount = data.length - outOfStockCount;
+          setLowStockCount(lowStockCount);
+          setOutOfStockCount(outOfStockCount);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching low stock count:', err);
+    }
+  };
+
+  if (isAuthenticated && user?.isAdmin) {
+    fetchDashboardStats(timePeriod);
+    fetchLowStockCount();
+  }
+}, [isAuthenticated, user, timePeriod]);
+
     }
   }, [isAuthenticated, user, timePeriod]);
 
@@ -73,6 +108,34 @@ const AdminPanel = () => {
             </p>
           </div>
         </div>
+
+        {/* Low Stock Alert Box */}
+        {lowStockProducts.length > 0 && (
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-8">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-red-800 font-medium">
+                  Inventory Alert: {lowStockProducts.length} product{lowStockProducts.length !== 1 ? 's' : ''} {lowStockProducts.length === 1 ? 'is' : 'are'} low on stock
+                </p>
+                <div className="mt-2 text-sm text-red-700">
+                  <ul className="list-disc pl-5 space-y-1">
+                    {outOfStockCount > 0 && (
+                      <li><strong>{outOfStockCount} product{outOfStockCount !== 1 ? 's' : ''} out of stock</strong></li>
+                    )}
+                    {lowStockCount > 0 && (
+                      <li>{lowStockCount} product{lowStockCount !== 1 ? 's' : ''} running low</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-8">
@@ -258,6 +321,21 @@ const AdminPanel = () => {
                   <div className="mt-5">
                     <Link href="/admin/deals" className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
                       Manage Deals
+                    </Link>
+                  </div>
+                </div>
+              </div>
+
+              {/* Inventory Management Card */}
+              <div className="bg-white overflow-hidden shadow rounded-lg">
+                <div className="px-4 py-5 sm:p-6">
+                  <h3 className="text-lg font-medium text-gray-900">Inventory Management</h3>
+                  <div className="mt-3 text-sm">
+                    <p className="text-gray-500">Monitor and manage product stock levels</p>
+                  </div>
+                  <div className="mt-5">
+                    <Link href="/admin/inventory" className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
+                      Manage Inventory
                     </Link>
                   </div>
                 </div>

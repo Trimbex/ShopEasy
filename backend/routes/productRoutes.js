@@ -4,24 +4,21 @@ import {
   getProduct,
   createProduct,
   updateProduct,
-  deleteProduct
+  deleteProduct,
+  getLowStockProducts
 } from '../controllers/productController.js';
+import { authenticate, adminOnly } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// GET /api/products - Get all products
+// Public routes
 router.get('/', getProducts);
-
-// GET /api/products/:id - Get single product
+router.get('/low-stock', getLowStockProducts);
 router.get('/:id', getProduct);
 
-// POST /api/products - Create new product
-router.post('/', createProduct);
-
-// PUT /api/products/:id - Update product
-router.put('/:id', updateProduct);
-
-// DELETE /api/products/:id - Delete product
-router.delete('/:id', deleteProduct);
+// Admin routes
+router.post('/', authenticate, adminOnly, createProduct);
+router.put('/:id', authenticate, adminOnly, updateProduct);
+router.delete('/:id', authenticate, adminOnly, deleteProduct);
 
 export default router; 
