@@ -67,9 +67,18 @@ export default function OrderConfirmation() {
   // Calculate totals
   const subtotal = order.items.reduce((total, item) => total + (item.price * item.quantity), 0);
   const discount = order.coupon ? (subtotal * order.coupon.percentDiscount) / 100 : 0;
-  const shippingCost = Number(order.shippingInfo?.shippingCost) || 0;
-  const tax = (subtotal - discount) * 0.08;
-  const total = subtotal - discount + shippingCost + tax;
+  
+  // Use shipping and tax values from the order data
+  const shippingCost = order.shippingInfo?.shippingCost
+    ? parseFloat(order.shippingInfo.shippingCost)
+    : 0;
+  
+  const taxAmount = order.shippingInfo?.taxAmount
+    ? parseFloat(order.shippingInfo.taxAmount)
+    : 0;
+  
+  // Use the total from the order, or calculate if not available
+  const total = parseFloat(order.total) || (subtotal - discount + shippingCost + taxAmount);
 
   return (
     <div className="bg-gray-50">
@@ -219,18 +228,18 @@ export default function OrderConfirmation() {
                 </div>
                 <div className="flex justify-between">
                   <dt className="font-medium text-gray-600">Tax</dt>
-                  <dd className="text-gray-900">${tax.toFixed(2)}</dd>
+                  <dd className="text-gray-900">${taxAmount.toFixed(2)}</dd>
                 </div>
                 <div className="flex justify-between border-t border-gray-200 pt-2 mt-2">
                   <dt className="font-medium text-gray-900">Total</dt>
                   <dd className="font-bold text-indigo-600">
                     {order.coupon ? (
                       <div className="flex flex-col items-end">
-                        <span className="text-gray-500 line-through text-sm">${(subtotal + shippingCost + tax).toFixed(2)}</span>
-                        <span>${(subtotal - discount + shippingCost + tax).toFixed(2)}</span>
+                        <span className="text-gray-500 line-through text-sm">${(subtotal + shippingCost + taxAmount).toFixed(2)}</span>
+                        <span>${(subtotal - discount + shippingCost + taxAmount).toFixed(2)}</span>
                       </div>
                     ) : (
-                      `$${(subtotal + shippingCost + tax).toFixed(2)}`
+                      `$${(subtotal + shippingCost + taxAmount).toFixed(2)}`
                     )}
                   </dd>
                 </div>

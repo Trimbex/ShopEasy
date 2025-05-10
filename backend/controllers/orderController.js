@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { calculateShipping, calculateTax } from '../utils/calculations.js';
 const prisma = new PrismaClient();
 
 // Get all orders (admin only)
@@ -250,13 +251,21 @@ export const createOrder = async (req, res) => {
       finalTotal = subtotal;
     }
 
-    // Add shipping and tax
-    const shippingCost = subtotal > 50 ? 0 : 5.99;
-    const tax = finalTotal * 0.08;
-    finalTotal += shippingCost + tax;
+    // Calculate shipping and tax
+    const shippingCost = calculateShipping(subtotal, shippingInfo);
+    const taxAmount = calculateTax(finalTotal, shippingInfo);
+    
+    // Add shipping and tax to final total
+    finalTotal += shippingCost + taxAmount;
 
     // Create the order
     console.log('Creating order with coupon ID:', couponId);
+    console.log('Order details:', {
+      subtotal,
+      shippingCost,
+      taxAmount,
+      finalTotal
+    });
     
     // Validate coupon ID if provided
     if (couponId) {
@@ -278,7 +287,11 @@ export const createOrder = async (req, res) => {
           create: orderItems
         },
         total: finalTotal,
-        shippingInfo,
+        shippingInfo: {
+          ...shippingInfo,
+          shippingCost,
+          taxAmount
+        },
         paymentInfo,
         couponId: couponId
       },
@@ -294,7 +307,16 @@ export const createOrder = async (req, res) => {
     
     console.log('Order created with coupon ID:', order.couponId);
     
-    res.status(201).json(order);
+    res.status(201).json({
+      ...order,
+      breakdown: {
+        subtotal,
+        shippingCost,
+        taxAmount,
+        discount: appliedCoupon ? (subtotal * appliedCoupon.percentDiscount) / 100 : 0,
+        total: finalTotal
+      }
+    });
   } catch (error) {
     console.error('Error creating order:', error);
     res.status(500).json({ 
