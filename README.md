@@ -245,7 +245,7 @@ Authorization: Bearer YOUR_TOKEN_HERE
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - All the open-source libraries and frameworks that made this project possible
 - The development team for their dedication and hard work
