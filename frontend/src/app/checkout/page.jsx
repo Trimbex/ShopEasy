@@ -43,6 +43,7 @@ export default function CheckoutPage() {
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [error, setError] = useState(null);
   const [orderInProgress, setOrderInProgress] = useState(false);
+  const [stockErrors, setStockErrors] = useState([]);
 
   // Add new state variables for shipping and tax
   const [shippingCost, setShippingCost] = useState(0);
@@ -95,6 +96,79 @@ export default function CheckoutPage() {
       router.push('/cart');
     }
   }, [cartItems, router, orderInProgress]);
+
+  // Check stock availability before proceeding with checkout
+  useEffect(() => {
+    const validateStock = async () => {
+      try {
+        // Skip validation if there are no items
+        if (!cartItems.length) return;
+        
+        const token = localStorage.getItem('token');
+        if (!token) {
+          // Use silent logging instead of console.error
+          if (process.env.NODE_ENV === 'development') {
+            console.log('No auth token available for stock validation');
+          }
+          return;
+        }
+
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        
+        try {
+          // Call a special endpoint just to validate stock without creating an order
+          const response = await api.post('/orders/validate-stock', {
+            items: cartItems.map(item => ({
+              productId: item.id,
+              quantity: item.quantity
+            }))
+          });
+          
+          // Clear any previous stock errors
+          setStockErrors([]);
+        } catch (apiError) {
+          // Handle the error without crashing
+          const errorMessage = apiError.response?.data?.message || 
+                              apiError.message || 
+                              'Unknown API error';
+
+          // Use silent logging instead of console.error
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[STOCK VALIDATION]', {
+              message: errorMessage,
+              response: apiError.response?.data
+            });
+          }
+          
+          // Handle specific stock availability errors
+          if (apiError.response?.data?.error === 'Insufficient stock') {
+            const insufficientItems = apiError.response?.data?.items || [];
+            if (insufficientItems.length > 0) {
+              setStockErrors(insufficientItems);
+            }
+          } else {
+            // Handle other API errors
+            setError(`Stock validation failed: ${errorMessage}`);
+          }
+        }
+      } catch (err) {
+        // This catch block is for non-API errors (JavaScript errors)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[STOCK VALIDATION]', err);
+        }
+        setError(`An error occurred during stock validation: ${err.message || 'Unknown error'}`);
+      }
+    };
+    
+    validateStock();
+  }, [cartItems]);
+
+  // Hide error when cart changes
+  useEffect(() => {
+    if (stockErrors.length > 0) {
+      setStockErrors([]);
+    }
+  }, [cartItems]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -219,13 +293,22 @@ export default function CheckoutPage() {
       return;
     }
     
+    // Check stock errors before proceeding
+    if (stockErrors.length > 0) {
+      // Scroll to the top to show the error
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    
     setIsSubmitting(true);
     setError(null);
     setOrderInProgress(true);
 
     try {
       // Log the coupon before creating the order
-      console.log('Coupon being used for order:', appliedCoupon);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Coupon being used for order:', appliedCoupon);
+      }
       
       // Create order data with careful handling of couponId
       const orderData = {
@@ -255,7 +338,9 @@ export default function CheckoutPage() {
       };
       
       // Log the order data
-      console.log('Order data being sent:', orderData);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Order data being sent:', orderData);
+      }
 
       // Make sure we have a token
       const token = localStorage.getItem('token');
@@ -269,7 +354,9 @@ export default function CheckoutPage() {
       // Submit the order with explicit try/catch
       try {
         const response = await api.post('/orders', orderData);
-        console.log('Order created successfully:', response.data);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Order created successfully:', response.data);
+        }
         
         // Clear the cart after successful order submission
         clearCart();
@@ -279,23 +366,65 @@ export default function CheckoutPage() {
           // Redirect to the order confirmation page
           await router.push(`/order-confirmation/${response.data.id}`);
         } else {
-          console.error('Missing order ID in response:', response.data);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('Missing order ID in response:', response.data);
+          }
           throw new Error('Order was created but no order ID was returned');
         }
       } catch (apiError) {
-        console.error('API request failed:', {
-          status: apiError.response?.status,
-          data: apiError.response?.data,
-          message: apiError.message
-        });
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[ORDER SUBMISSION]', {
+            status: apiError.response?.status,
+            data: apiError.response?.data,
+            message: apiError.message
+          });
+        }
+        
+        // Handle specific stock availability errors
+        if (apiError.response?.data?.error === 'Insufficient stock') {
+          const insufficientItems = apiError.response?.data?.items || [];
+          let stockErrorMessage = 'Some items in your cart are out of stock or have insufficient stock:';
+          
+          if (insufficientItems.length > 0) {
+            insufficientItems.forEach(item => {
+              stockErrorMessage += `\n• ${item.productName}: Available: ${item.availableStock}, Requested: ${item.requestedQuantity}`;
+            });
+            stockErrorMessage += '\n\nPlease update your cart before continuing.';
+          }
+          
+          setError(stockErrorMessage);
+          setStockErrors(insufficientItems);
+          setOrderInProgress(false);
+          return;
+        }
+        
+        // Set a generic error message if no specific data available
+        if (!apiError.response) {
+          setError(`Network error: ${apiError.message || 'Cannot connect to server'}`);
+          setOrderInProgress(false);
+          return;
+        }
+        
         throw apiError;
       }
     } catch (err) {
-      console.error('Checkout error:', err);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[ORDER API]', {
+          message: err.message,
+          response: err.response?.data,
+          status: err.response?.status
+        });
+      }
+      
       let errorMessage = 'Failed to process your order. Please try again.';
       
       if (err.response?.data?.error) {
         errorMessage = err.response.data.error;
+        
+        // For clearer error handling on specific error types
+        if (err.response?.data?.message) {
+          errorMessage += ': ' + err.response.data.message;
+        }
       } else if (err.message) {
         errorMessage = err.message;
       }
@@ -346,7 +475,10 @@ export default function CheckoutPage() {
       applyCoupon(coupon, data.discount);
       setCouponError(null);
     } catch (error) {
-      console.error('Error applying coupon:', error);
+      // Silent logging in development mode
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Error applying coupon:', error);
+      }
       setCouponError(error.response?.data?.error || 'Invalid coupon code');
       removeCoupon();
     } finally {
@@ -355,17 +487,76 @@ export default function CheckoutPage() {
   };
 
   const handleRemoveCoupon = () => {
-    console.log('[COUPON] Removing coupon, current state:', appliedCoupon);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[COUPON] Removing coupon, current state:', appliedCoupon);
+    }
     removeCoupon();
     setCouponCode('');
     setCouponError(null);
-    console.log('[COUPON] After removing, appliedCoupon should be null');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[COUPON] After removing, appliedCoupon should be null');
+    }
   };
 
   return (
     <div className="bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Checkout</h1>
+        
+        {stockErrors.length > 0 && (
+          <div className="mb-8 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-lg font-medium text-red-800">Insufficient Stock</h3>
+                <div className="mt-2">
+                  <p className="text-sm text-red-700 mb-2">
+                    Some items in your cart have insufficient stock available:
+                  </p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    {stockErrors.map((item, index) => (
+                      <li key={index} className="text-sm text-red-700">
+                        <span className="font-medium">{item.productName}</span>: 
+                        <span className="ml-1">Available: <span className="font-medium">{item.availableStock}</span>,</span>
+                        <span className="ml-1">Requested: <span className="font-medium">{item.requestedQuantity}</span></span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-4">
+                    <Link
+                      href="/cart"
+                      className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                    >
+                      Update Cart
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {error && (
+          <div className="mb-8 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-lg font-medium text-red-800">Error</h3>
+                <div className="mt-2 text-sm text-red-700 whitespace-pre-line">
+                  {error}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         
         <div className="lg:grid lg:grid-cols-12 lg:gap-x-12">
           <div className="lg:col-span-7">

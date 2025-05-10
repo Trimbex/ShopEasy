@@ -34,16 +34,12 @@ export const getProducts = async (req, res) => {
         }
       }
     };
-    
-    // Add category filter if provided
+
+    // Apply category filter if provided
     if (category) {
-      queryOptions.where = {
-        ...queryOptions.where,
-        category
-      };
+      queryOptions.where.category = category;
     }
-    
-    // Get products with the specified filters
+
     const products = await prisma.product.findMany(queryOptions);
 
     // Format products with calculated average ratings
@@ -80,7 +76,6 @@ export const getProducts = async (req, res) => {
     }
 
     res.json(filteredProducts);
-
   } catch (error) {
     console.error('Error fetching products:', error);
     res.status(500).json({ error: 'Error fetching products' });

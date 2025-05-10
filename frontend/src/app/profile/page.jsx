@@ -61,7 +61,7 @@ export default function ProfilePage() {
           // Set the auth token for this request
           api.defaults.headers.common['Authorization'] = `Bearer ${localStorage.getItem('token')}`;
           
-          const { data } = await api.get('/orders/myorders');
+          const { data } = await api.get('/orders/user');
           setOrders(data);
           setProfileError(null);
         } catch (error) {

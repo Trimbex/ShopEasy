@@ -1,43 +1,93 @@
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
-export const decrementProductStock = async (items) => {
+// Update stock levels for all products in an order (decrease)
+export const decrementStockForOrder = async (orderItems) => {
   try {
-    // Use a transaction to ensure all stock updates are atomic
-    return await prisma.$transaction(async (tx) => {
-      const updatedProducts = [];
+    // Validate input
+    if (!orderItems || !Array.isArray(orderItems) || orderItems.length === 0) {
+      throw new Error('Invalid order items');
+    }
 
-      for (const item of items) {
-        const product = await tx.product.findUnique({
+    // Process each order item
+    const stockUpdates = await Promise.all(
+      orderItems.map(async (item) => {
+        // Get current product
+        const product = await prisma.product.findUnique({
           where: { id: item.productId }
         });
-
+        
         if (!product) {
           throw new Error(`Product with ID ${item.productId} not found`);
         }
-
+        
+        // Ensure there's enough stock
         if (product.stock < item.quantity) {
-          throw new Error(`Insufficient stock for product ${product.name}`);
+          throw new Error(`Insufficient stock for product ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`);
         }
-
-        const updatedProduct = await tx.product.update({
+        
+        // Update product stock
+        const updatedProduct = await prisma.product.update({
           where: { id: item.productId },
-          data: {
-            stock: {
-              decrement: item.quantity
-            },
-            // Update low stock status
-            isLowStock: product.stock - item.quantity <= product.lowStockThreshold
-          }
+          data: { stock: product.stock - item.quantity }
         });
-
-        updatedProducts.push(updatedProduct);
-      }
-
-      return updatedProducts;
-    });
+        
+        return {
+          productId: item.productId,
+          productName: updatedProduct.name,
+          previousStock: product.stock,
+          newStock: updatedProduct.stock,
+          quantityDecremented: item.quantity
+        };
+      })
+    );
+    
+    return stockUpdates;
   } catch (error) {
     console.error('Error decrementing stock:', error);
+    throw error;
+  }
+};
+
+// Restore stock levels for all products in a canceled order (increase)
+export const incrementStockForOrder = async (orderItems) => {
+  try {
+    // Validate input
+    if (!orderItems || !Array.isArray(orderItems) || orderItems.length === 0) {
+      throw new Error('Invalid order items');
+    }
+    
+    // Process each order item
+    const stockUpdates = await Promise.all(
+      orderItems.map(async (item) => {
+        // Get current product
+        const product = await prisma.product.findUnique({
+          where: { id: item.productId }
+        });
+        
+        if (!product) {
+          throw new Error(`Product with ID ${item.productId} not found`);
+        }
+        
+        // Update product stock (increment)
+        const updatedProduct = await prisma.product.update({
+          where: { id: item.productId },
+          data: { stock: product.stock + item.quantity }
+        });
+        
+        return {
+          productId: item.productId,
+          productName: updatedProduct.name,
+          previousStock: product.stock,
+          newStock: updatedProduct.stock,
+          quantityIncremented: item.quantity
+        };
+      })
+    );
+    
+    return stockUpdates;
+  } catch (error) {
+    console.error('Error incrementing stock:', error);
     throw error;
   }
 };
