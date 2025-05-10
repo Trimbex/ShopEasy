@@ -7,53 +7,39 @@ const LOW_STOCK_THRESHOLD = 5;
 // Get all products
 export const getProducts = async (req, res) => {
   try {
-const { category, minRating } = req.query;
+    const { category, minRating } = req.query;
 
-// Build the query options
-const queryOptions = {
-  where: {},
-  select: {
-    id: true,
-    name: true,
-    description: true,
-    price: true,
-    imageUrl: true,
-    stock: true,
-    category: true,
-    createdAt: true,
-    updatedAt: true,
-    reviews: {
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true
+    // Build the query options
+    const queryOptions = {
+      where: {},
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        price: true,
+        imageUrl: true,
+        stock: true,
+        category: true,
+        createdAt: true,
+        updatedAt: true,
+        reviews: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
           }
         }
       }
-    }
-  }
-};
-
-// Apply category filter if provided
-if (category) {
-  queryOptions.where.category = category;
-}
-
-const products = await prisma.product.findMany(queryOptions);
-
-      }
     };
-    
-    // Add category filter if provided
+
+    // Apply category filter if provided
     if (category) {
-      queryOptions.where = {
-        ...queryOptions.where,
-        category
-      };
+      queryOptions.where.category = category;
     }
-    
-    // Get products with the specified filters
+
     const products = await prisma.product.findMany(queryOptions);
 
     // Format products with calculated average ratings
@@ -70,28 +56,26 @@ const products = await prisma.product.findMany(queryOptions);
       };
     });
 
-// Add stock information to response
-const productsWithStockInfo = products.map(product => ({
-  ...product,
-  price: Number(product.price),
-  stockStatus: {
-    isLowStock: product.stock <= LOW_STOCK_THRESHOLD,
-    currentStock: product.stock,
-    threshold: LOW_STOCK_THRESHOLD
-  }
-}));
+    // Add stock information to response
+    const productsWithStockInfo = formattedProducts.map(product => ({
+      ...product,
+      stockStatus: {
+        isLowStock: product.stock <= LOW_STOCK_THRESHOLD,
+        currentStock: product.stock,
+        threshold: LOW_STOCK_THRESHOLD
+      }
+    }));
 
-// Filter by minimum rating if specified
-let filteredProducts = productsWithStockInfo;
-if (minRating && !isNaN(Number(minRating))) {
-  const minRatingValue = Number(minRating);
-  filteredProducts = filteredProducts.filter(product =>
-    product.averageRating >= minRatingValue
-  );
-}
+    // Filter by minimum rating if specified
+    let filteredProducts = productsWithStockInfo;
+    if (minRating && !isNaN(Number(minRating))) {
+      const minRatingValue = Number(minRating);
+      filteredProducts = filteredProducts.filter(product =>
+        product.averageRating >= minRatingValue
+      );
+    }
 
-res.json(filteredProducts);
-
+    res.json(filteredProducts);
   } catch (error) {
     console.error('Error fetching products:', error);
     res.status(500).json({ error: 'Error fetching products' });

@@ -77,9 +77,6 @@ useEffect(() => {
   }
 }, [isAuthenticated, user, timePeriod]);
 
-    }
-  }, [isAuthenticated, user, timePeriod]);
-
   const handlePeriodChange = (e) => {
     setTimePeriod(e.target.value);
   };
