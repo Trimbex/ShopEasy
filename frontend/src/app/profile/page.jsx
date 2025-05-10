@@ -326,35 +326,6 @@ export default function ProfilePage() {
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('addresses')}
-                  className={`w-full flex items-center px-4 py-2 text-sm font-medium rounded-md ${
-                    activeTab === 'addresses'
-                      ? 'bg-indigo-100 text-indigo-700'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  <svg className="mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  Addresses
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('payment')}
-                  className={`w-full flex items-center px-4 py-2 text-sm font-medium rounded-md ${
-                    activeTab === 'payment'
-                      ? 'bg-indigo-100 text-indigo-700'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  <svg className="mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                  </svg>
-                  Payment Methods
-                </button>
-
-                <button
                   onClick={handleLogout}
                   className="w-full flex items-center px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md"
                 >
@@ -482,87 +453,6 @@ export default function ProfilePage() {
                 </div>
                 
                 {renderOrders()}
-              </div>
-            )}
-
-            {activeTab === 'addresses' && (
-              <div className="bg-white shadow-sm rounded-lg p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">Saved Addresses</h2>
-                  <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
-                    Add New Address
-                  </button>
-                </div>
-                
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                  <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-                    <div className="flex justify-between mb-2">
-                      <h3 className="text-sm font-medium text-gray-900">Home</h3>
-                      <div className="flex space-x-2">
-                        <button className="text-indigo-600 text-sm hover:text-indigo-900">Edit</button>
-                        <button className="text-red-600 text-sm hover:text-red-900">Delete</button>
-                      </div>
-                    </div>
-                    <address className="not-italic text-sm text-gray-600">
-                      <p>John Doe</p>
-                      <p>123 Main St</p>
-                      <p>Anytown, CA 12345</p>
-                      <p>United States</p>
-                    </address>
-                  </div>
-                  
-                  <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-                    <div className="flex justify-between mb-2">
-                      <h3 className="text-sm font-medium text-gray-900">Work</h3>
-                      <div className="flex space-x-2">
-                        <button className="text-indigo-600 text-sm hover:text-indigo-900">Edit</button>
-                        <button className="text-red-600 text-sm hover:text-red-900">Delete</button>
-                      </div>
-                    </div>
-                    <address className="not-italic text-sm text-gray-600">
-                      <p>John Doe</p>
-                      <p>456 Office Blvd, Suite 200</p>
-                      <p>Business City, CA 67890</p>
-                      <p>United States</p>
-                    </address>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'payment' && (
-              <div className="bg-white shadow-sm rounded-lg p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">Payment Methods</h2>
-                  <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
-                    Add New Card
-                  </button>
-                </div>
-                
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                  <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-                    <div className="flex justify-between mb-2">
-                      <h3 className="text-sm font-medium text-gray-900">Visa ending in 4242</h3>
-                      <div className="flex space-x-2">
-                        <button className="text-indigo-600 text-sm hover:text-indigo-900">Edit</button>
-                        <button className="text-red-600 text-sm hover:text-red-900">Delete</button>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-600">Expires 12/25</p>
-                    <p className="text-sm text-gray-600 mt-2">Default payment method</p>
-                  </div>
-                  
-                  <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-                    <div className="flex justify-between mb-2">
-                      <h3 className="text-sm font-medium text-gray-900">Mastercard ending in 5555</h3>
-                      <div className="flex space-x-2">
-                        <button className="text-indigo-600 text-sm hover:text-indigo-900">Edit</button>
-                        <button className="text-red-600 text-sm hover:text-red-900">Delete</button>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-600">Expires 06/24</p>
-                  </div>
-                </div>
               </div>
             )}
           </div>
