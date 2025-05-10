@@ -48,6 +48,44 @@ export default function CheckoutPage() {
   const [orderInProgress, setOrderInProgress] = useState(false);
   const [stockErrors, setStockErrors] = useState([]);
 
+  // Add new state variables for shipping and tax
+  const [shippingCost, setShippingCost] = useState(0);
+  const [taxAmount, setTaxAmount] = useState(0);
+  const [orderBreakdown, setOrderBreakdown] = useState({
+    subtotal: 0,
+    discount: 0,
+    shipping: 0,
+    tax: 0,
+    total: 0
+  });
+
+  // Add US state tax rates map
+  const STATE_TAX_RATES = {
+    'AL': 0.04, 'AK': 0.00, 'AZ': 0.056, 'AR': 0.065, 'CA': 0.0725,
+    'CO': 0.029, 'CT': 0.0635, 'DE': 0.00, 'FL': 0.06, 'GA': 0.04,
+    'HI': 0.04, 'ID': 0.06, 'IL': 0.0625, 'IN': 0.07, 'IA': 0.06,
+    'KS': 0.065, 'KY': 0.06, 'LA': 0.0445, 'ME': 0.055, 'MD': 0.06,
+    'MA': 0.0625, 'MI': 0.06, 'MN': 0.06875, 'MS': 0.07, 'MO': 0.04225,
+    'MT': 0.00, 'NE': 0.055, 'NV': 0.0685, 'NH': 0.00, 'NJ': 0.06625,
+    'NM': 0.05125, 'NY': 0.04, 'NC': 0.0475, 'ND': 0.05, 'OH': 0.0575,
+    'OK': 0.045, 'OR': 0.00, 'PA': 0.06, 'RI': 0.07, 'SC': 0.06,
+    'SD': 0.045, 'TN': 0.07, 'TX': 0.0625, 'UT': 0.061, 'VT': 0.06,
+    'VA': 0.053, 'WA': 0.065, 'WV': 0.06, 'WI': 0.05, 'WY': 0.04,
+    'DC': 0.06
+  };
+  
+  // Default tax rate
+  const DEFAULT_TAX_RATE = 0.06;
+
+  // Helper function to get tax rate for a state
+  const getStateTaxRate = (stateCode) => {
+    if (!stateCode) return DEFAULT_TAX_RATE;
+    
+    // Convert to uppercase to match the keys in our map
+    const upperStateCode = stateCode.toUpperCase();
+    return STATE_TAX_RATES[upperStateCode] || DEFAULT_TAX_RATE;
+  };
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
@@ -141,6 +179,50 @@ export default function CheckoutPage() {
     }
   }, [isAuthenticated, appliedCoupon]);
 
+  // Calculate estimated shipping and tax whenever the address, cart, or coupon changes
+  useEffect(() => {
+    const calculateOrderTotals = () => {
+      const subtotal = getCartTotal();
+      const discountedSubtotal = getDiscountedTotal();
+      const discount = subtotal - discountedSubtotal;
+      
+      // Calculate estimated shipping (matching backend logic)
+      let estimatedShipping = 0;
+      if (subtotal < 50) {
+        estimatedShipping = 9.99;
+      } else if (subtotal < 100) {
+        estimatedShipping = 5.99;
+      }
+      
+      // Add international fee if not US
+      if (formData.country && formData.country !== 'US') {
+        estimatedShipping += 15;
+      }
+      
+      // Estimate tax (US only, using state-specific rates)
+      let estimatedTax = 0;
+      if (!formData.country || formData.country === 'US') {
+        // Get state-specific tax rate
+        const taxRate = getStateTaxRate(formData.state);
+        estimatedTax = discountedSubtotal * taxRate;
+      }
+      
+      setShippingCost(estimatedShipping);
+      setTaxAmount(estimatedTax);
+      
+      // Update order breakdown
+      setOrderBreakdown({
+        subtotal: subtotal,
+        discount: discount,
+        shipping: estimatedShipping,
+        tax: estimatedTax,
+        total: discountedSubtotal + estimatedShipping + estimatedTax
+      });
+    };
+    
+    calculateOrderTotals();
+  }, [formData.country, formData.state, getCartTotal, getDiscountedTotal, cartItems, appliedCoupon]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -174,7 +256,12 @@ export default function CheckoutPage() {
     // Validate address
     if (!formData.address.trim()) newErrors.address = 'Address is required';
     if (!formData.city.trim()) newErrors.city = 'City is required';
-    if (!formData.state.trim()) newErrors.state = 'State is required';
+    
+    // State is required only for US addresses
+    if ((!formData.country || formData.country === 'US') && !formData.state.trim()) {
+      newErrors.state = 'State is required';
+    }
+    
     if (!formData.zipCode.trim()) newErrors.zipCode = 'Zip code is required';
     
     // Validate payment info based on payment method
@@ -274,7 +361,7 @@ export default function CheckoutPage() {
         },
         // Explicitly handle couponId to ensure it's not undefined
         couponId: appliedCoupon?.id || null,
-        total: getDiscountedTotal()
+        total: orderBreakdown.total // Use calculated total with shipping & tax
       };
       
       // Log the order data
@@ -437,11 +524,6 @@ export default function CheckoutPage() {
       console.log('[COUPON] After removing, appliedCoupon should be null');
     }
   };
-
-  const subtotal = getCartTotal();
-  const shippingEstimate = subtotal > 50 ? 0 : 5.99;
-  const taxEstimate = (subtotal - discount) * 0.08;
-  const total = getDiscountedTotal() + shippingEstimate + taxEstimate;
 
   return (
     <div className="bg-gray-50">
@@ -607,14 +689,77 @@ export default function CheckoutPage() {
                     <label htmlFor="state" className="block text-sm font-medium text-gray-700">
                       State / Province
                     </label>
-                    <input
-                      type="text"
-                      id="state"
-                      name="state"
-                      value={formData.state}
-                      onChange={handleChange}
-                      className={`mt-1 block w-full border ${errors.state ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                    />
+                    {formData.country === 'US' ? (
+                      <select
+                        id="state"
+                        name="state"
+                        value={formData.state}
+                        onChange={handleChange}
+                        className={`mt-1 block w-full bg-white border ${errors.state ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                      >
+                        <option value="">Select State</option>
+                        <option value="AL">Alabama</option>
+                        <option value="AK">Alaska</option>
+                        <option value="AZ">Arizona</option>
+                        <option value="AR">Arkansas</option>
+                        <option value="CA">California</option>
+                        <option value="CO">Colorado</option>
+                        <option value="CT">Connecticut</option>
+                        <option value="DE">Delaware</option>
+                        <option value="FL">Florida</option>
+                        <option value="GA">Georgia</option>
+                        <option value="HI">Hawaii</option>
+                        <option value="ID">Idaho</option>
+                        <option value="IL">Illinois</option>
+                        <option value="IN">Indiana</option>
+                        <option value="IA">Iowa</option>
+                        <option value="KS">Kansas</option>
+                        <option value="KY">Kentucky</option>
+                        <option value="LA">Louisiana</option>
+                        <option value="ME">Maine</option>
+                        <option value="MD">Maryland</option>
+                        <option value="MA">Massachusetts</option>
+                        <option value="MI">Michigan</option>
+                        <option value="MN">Minnesota</option>
+                        <option value="MS">Mississippi</option>
+                        <option value="MO">Missouri</option>
+                        <option value="MT">Montana</option>
+                        <option value="NE">Nebraska</option>
+                        <option value="NV">Nevada</option>
+                        <option value="NH">New Hampshire</option>
+                        <option value="NJ">New Jersey</option>
+                        <option value="NM">New Mexico</option>
+                        <option value="NY">New York</option>
+                        <option value="NC">North Carolina</option>
+                        <option value="ND">North Dakota</option>
+                        <option value="OH">Ohio</option>
+                        <option value="OK">Oklahoma</option>
+                        <option value="OR">Oregon</option>
+                        <option value="PA">Pennsylvania</option>
+                        <option value="RI">Rhode Island</option>
+                        <option value="SC">South Carolina</option>
+                        <option value="SD">South Dakota</option>
+                        <option value="TN">Tennessee</option>
+                        <option value="TX">Texas</option>
+                        <option value="UT">Utah</option>
+                        <option value="VT">Vermont</option>
+                        <option value="VA">Virginia</option>
+                        <option value="WA">Washington</option>
+                        <option value="WV">West Virginia</option>
+                        <option value="WI">Wisconsin</option>
+                        <option value="WY">Wyoming</option>
+                        <option value="DC">District of Columbia</option>
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        id="state"
+                        name="state"
+                        value={formData.state}
+                        onChange={handleChange}
+                        className={`mt-1 block w-full border ${errors.state ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                      />
+                    )}
                     {errors.state && (
                       <p className="mt-1 text-sm text-red-600">{errors.state}</p>
                     )}
@@ -966,6 +1111,107 @@ export default function CheckoutPage() {
                 </button>
               </div>
             </form>
+          </div>
+
+          <div className="mt-8 lg:mt-0 lg:col-span-5">
+            <div className="bg-gray-50 rounded-lg p-6 shadow">
+              <h2 className="text-lg font-medium text-gray-900 mb-6">Order Summary</h2>
+              
+              {/* Cart items */}
+              {cartItems.map((item) => (
+                <div key={item.id} className="flex justify-between mb-4">
+                  <div className="flex items-center">
+                    <span className="bg-gray-200 rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">
+                      {item.quantity}
+                    </span>
+                    <span className="text-gray-700">{item.name}</span>
+                  </div>
+                  <span className="text-gray-900">${(item.price * item.quantity).toFixed(2)}</span>
+                </div>
+              ))}
+              
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-600">Subtotal</span>
+                  <span className="text-gray-900">${orderBreakdown.subtotal.toFixed(2)}</span>
+                </div>
+                
+                {appliedCoupon && (
+                  <div className="flex justify-between mb-2 text-green-600">
+                    <span>Discount ({appliedCoupon.percentDiscount}%)</span>
+                    <span>-${orderBreakdown.discount.toFixed(2)}</span>
+                  </div>
+                )}
+                
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-600">Shipping</span>
+                  <span className="text-gray-900">${orderBreakdown.shipping.toFixed(2)}</span>
+                </div>
+                
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-600">Tax</span>
+                  <span className="text-gray-900">
+                    ${orderBreakdown.tax.toFixed(2)}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between pt-4 border-t border-gray-200 mt-4">
+                  <span className="font-medium text-gray-900">Total</span>
+                  <span className="font-bold text-gray-900">${orderBreakdown.total.toFixed(2)}</span>
+                </div>
+              </div>
+              
+              {/* Coupon code section */}
+              <div className="mt-6 border-t border-gray-200 pt-6">
+                {appliedCoupon ? (
+                  <div className="bg-green-50 p-4 rounded-md mb-4">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm font-medium text-green-800">
+                          Coupon code <span className="font-bold">{appliedCoupon.alias}</span> applied!
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleRemoveCoupon}
+                          className="mt-1 text-sm text-green-700 hover:text-green-600 font-medium"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex space-x-4">
+                    <input
+                      type="text"
+                      name="couponCode"
+                      id="couponCode"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value)}
+                      placeholder="Enter coupon code"
+                      className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyCoupon}
+                      disabled={isApplyingCoupon}
+                      className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${isApplyingCoupon ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {isApplyingCoupon ? 'Applying...' : 'Apply'}
+                    </button>
+                  </div>
+                )}
+                
+                {couponError && (
+                  <p className="mt-2 text-sm text-red-600">{couponError}</p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
